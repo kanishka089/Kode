@@ -10,6 +10,12 @@ import { Environment } from './evaluator/environment.js';
 import { registerBuiltins } from './evaluator/builtins.js';
 import { registerWebStdlib } from './stdlib/web.js';
 import { registerDbStdlib } from './stdlib/db.js';
+import { registerAiStdlib } from './stdlib/ai.js';
+import { registerJsonStdlib } from './stdlib/json-mod.js';
+import { registerEnvStdlib } from './stdlib/env-mod.js';
+import { registerFsStdlib } from './stdlib/fs-mod.js';
+import { registerProcStdlib } from './stdlib/proc.js';
+import { registerKodeRuntime } from './stdlib/kode-runtime.js';
 import { stringify, KodeValue } from './evaluator/values.js';
 import { TokenType } from './lexer/tokens.js';
 import { formatError } from './errors/reporter.js';
@@ -27,6 +33,16 @@ function createGlobalEnv(): Environment {
   registerBuiltins(env, callFn);
   registerWebStdlib(env, callFn);
   registerDbStdlib(env);
+  registerAiStdlib(env);
+  registerJsonStdlib(env);
+  registerEnvStdlib(env);
+  registerFsStdlib(env);
+  registerProcStdlib(env);
+  registerKodeRuntime(env, (source, evalEnv) => {
+    const tokens = new Lexer(source).tokenize();
+    const ast = new Parser(tokens).parse();
+    return globalEvaluator.evalProgram(ast, evalEnv);
+  });
   return env;
 }
 
