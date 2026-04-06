@@ -1,0 +1,53 @@
+-- Kode Phase 5 — State Machines + Memory + Agents
+
+-- Define a state machine for document workflow
+st DocFlow {
+  "draft" { on "submit" -> "review" }
+  "review" { on "approve" -> "published" on "reject" -> "draft" }
+  "published" {}
+}
+
+-- Agent that manages documents using state machine + memory
+ag DocManager {
+  vr flow = DocFlow.new()
+
+  on "action" (p) {
+    lt prev = flow.state
+    flow.send(p.action)
+
+    -- Log to episodic memory
+    mem.e.log(@{from|prev to|flow.state action|p.action})
+
+    io.out(prev + " -> " + flow.state)
+
+    if flow.state == "published" {
+      lt history = mem.e.last(20)
+      io.out("Document published after " + len(history) + " steps")
+    }
+  }
+}
+
+-- Spawn and use
+lt mgr = sp DocManager
+em mgr @{type|"action" action|"submit"}
+em mgr @{type|"action" action|"reject"}
+em mgr @{type|"action" action|"submit"}
+em mgr @{type|"action" action|"approve"}
+
+-- Show memory contents
+io.out("---")
+io.out("Working memory test:")
+mem.w.set("current_project", "Kode Language")
+mem.w.set("version", "0.1")
+io.out(mem.w.get("current_project"))
+
+io.out("Semantic memory test:")
+mem.s.store("user:ada", @{name|"Ada" role|"dev"})
+mem.s.store("user:bob", @{name|"Bob" role|"designer"})
+lt ada = mem.s.recall("user:ada")
+io.out(ada.name + " is a " + ada.role)
+
+io.out("Procedural memory test:")
+mem.p.learn("double", |x| -> x * 2)
+lt double_fn = mem.p.use("double")
+io.out(double_fn(21))

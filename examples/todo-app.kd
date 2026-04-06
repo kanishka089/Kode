@@ -1,0 +1,57 @@
+-- Kode Phase 6 — Full-Stack Todo App
+-- A complete web application in ~60 lines of Kode
+
+-- Database setup
+lt store = db.open("sqlite:todos.db")
+store.exec("create table if not exists todos (id integer primary key autoincrement, title text not null, done integer default 0)")
+
+-- HTML page
+fn page() {
+  lt todos = store.query("select * from todos")
+  vr items = ""
+  fr t : todos {
+    vr checked = ""
+    if t.done == 1 { checked = "checked" }
+    items = items + "<li><input type='checkbox' " + checked + " onchange=\"fetch('/toggle/' + " + t.id + ")\">" + t.title + "</li>"
+  }
+
+  rt web.html("<html><head><title>Kode Todos</title><style>body{font-family:sans-serif;max-width:600px;margin:2rem auto}li{padding:0.5rem}h1{color:#333}</style></head><body><h1>Kode Todo App</h1><form method='post' action='/add'><input name='title' placeholder='New todo...' required><button>Add</button></form><ul>" + items + "</ul><p>" + len(todos) + " todos</p></body></html>")
+}
+
+-- API: list todos as JSON
+fn api_list() {
+  lt todos = store.query("select * from todos")
+  rt web.json(todos)
+}
+
+-- API: add todo
+fn api_add(req) {
+  lt title = req.body.title
+  store.exec("insert into todos (title) values (?)", @[title])
+  rt web.redirect("/")
+}
+
+-- API: toggle todo
+fn api_toggle(req) {
+  lt id = req.params.id
+  store.exec("update todos set done = case when done = 0 then 1 else 0 end where id = ?", @[id])
+  rt web.json(@{ok|tr})
+}
+
+-- API: delete todo
+fn api_delete(req) {
+  lt id = req.params.id
+  store.exec("delete from todos where id = ?", @[id])
+  rt web.json(@{ok|tr})
+}
+
+-- Register routes
+web.route("GET", "/", |req| -> page())
+web.route("GET", "/api/todos", |req| -> api_list())
+web.route("POST", "/add", |req| -> api_add(req))
+web.route("POST", "/toggle/:id", |req| -> api_toggle(req))
+web.route("DELETE", "/api/todos/:id", |req| -> api_delete(req))
+
+-- Start server
+io.out("Starting Kode Todo App...")
+web.serve(3000)

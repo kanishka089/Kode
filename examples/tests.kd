@@ -1,0 +1,79 @@
+-- Kode Phase 7 — Built-in Testing
+
+-- Functions to test
+fn add(a, b) { rt a + b }
+fn fib(n) { if n <= 1 { rt n }; rt fib(n - 1) + fib(n - 2) }
+fn factorial(n) { if n <= 1 { rt 1 }; rt n * factorial(n - 1) }
+
+#test "addition" {
+  assert_eq(add(2, 3), 5)
+  assert_eq(add(-1, 1), 0)
+  assert_eq(add(0, 0), 0)
+}
+
+#test "fibonacci" {
+  assert_eq(fib(0), 0)
+  assert_eq(fib(1), 1)
+  assert_eq(fib(10), 55)
+}
+
+#test "factorial" {
+  assert_eq(factorial(1), 1)
+  assert_eq(factorial(5), 120)
+  assert_eq(factorial(10), 3628800)
+}
+
+#test "string operations" {
+  assert_eq(str.upper("hello"), "HELLO")
+  assert_eq(str.lower("HELLO"), "hello")
+  assert(str.contains("hello world", "world"))
+  assert(!str.contains("hello", "xyz"))
+}
+
+#test "list operations" {
+  lt nums = @[3 1 4 1 5]
+  assert_eq(len(nums), 5)
+  assert_eq(nums[0], 3)
+
+  lt sorted = lst.sort(nums)
+  assert_eq(sorted[0], 1)
+
+  lt unique = lst.unique(nums)
+  assert_eq(len(unique), 4)
+}
+
+#test "TOON maps" {
+  lt user = @{name|"Ada" age|30}
+  assert_eq(user.name, "Ada")
+  assert_eq(user.age, 30)
+}
+
+#test "control flow" {
+  vr x = 0
+  fr i : 0..5 { x += i }
+  assert_eq(x, 10)
+
+  vr y = 0
+  wl y < 10 { y += 2 }
+  assert_eq(y, 10)
+}
+
+#test "closures" {
+  fn make_adder(x) -> |y| -> x + y
+  lt add5 = make_adder(5)
+  assert_eq(add5(3), 8)
+  assert_eq(add5(10), 15)
+}
+
+#test "null coalescing" {
+  assert_eq(nl ?? "default", "default")
+  assert_eq(42 ?? 0, 42)
+}
+
+#test "memory system" {
+  mem.w.set("test_key", 42)
+  assert_eq(mem.w.get("test_key"), 42)
+  assert(mem.w.has("test_key"))
+  mem.w.delete("test_key")
+  assert(!mem.w.has("test_key"))
+}

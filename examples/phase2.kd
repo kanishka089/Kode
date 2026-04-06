@@ -1,0 +1,84 @@
+-- Kode Phase 2 — Data & Functional Programming
+
+-- String interpolation
+lt name = "Kode"
+lt version = 2
+io.out("Welcome to ${name} v${version}!")
+
+-- Higher-order functions
+lt nums = @[1 2 3 4 5 6 7 8 9 10]
+
+lt doubled = lst.map(nums, |x| -> x * 2)
+io.out(doubled)
+
+lt evens = lst.filter(nums, |x| -> x % 2 == 0)
+io.out(evens)
+
+lt sum = lst.reduce(nums, |acc, x| -> acc + x, 0)
+io.out(sum)
+
+-- Chaining with pipes
+lt result = nums
+  |> lst.filter(|x| -> x > 5)
+  |> lst.map(|x| -> x * 10)
+io.out(result)
+
+-- TOON maps
+lt config = @{
+  host|"localhost"
+  port|3000
+  debug|tr
+}
+io.out(config.host)
+io.out(config.port)
+
+-- Nested TOON
+lt user = @{
+  name|"Ada"
+  address|@{city|"London" country|"UK"}
+}
+io.out(user.address.city)
+
+-- Lists of maps
+lt users = @[
+  @{name|"Ada" age|30}
+  @{name|"Bob" age|25}
+  @{name|"Cal" age|35}
+]
+
+lt names = lst.map(users, |u| -> u.name)
+io.out(names)
+
+lt over30 = lst.filter(users, |u| -> u.age >= 30)
+io.out(lst.map(over30, |u| -> u.name))
+
+-- String operations
+lt greeting = "Hello, World!"
+io.out(str.upper(greeting))
+io.out(str.lower(greeting))
+io.out(str.contains(greeting, "World"))
+io.out(str.split(greeting, ", "))
+
+-- Match
+lt status = 2
+mt status {
+  1 -> io.out("one")
+  2 -> io.out("two")
+  3 -> io.out("three")
+  _ -> io.out("other")
+}
+
+-- Null coalescing
+lt maybe = nl
+lt safe = maybe ?? "default"
+io.out(safe)
+
+-- List operations
+lt joined = lst.join(@["a" "b" "c"], "-")
+io.out(joined)
+
+lt unique = lst.unique(@[1 2 2 3 3 3])
+io.out(unique)
+
+lt chunks = lst.chunk(@[1 2 3 4 5 6], 2)
+io.out(chunks)

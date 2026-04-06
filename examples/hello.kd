@@ -1,0 +1,58 @@
+-- Kode Language — Hello World
+-- First working program
+
+lt name = "Kode"
+io.out("Hello from Kode!")
+
+-- Functions
+fn add(a, b) {
+  rt a + b
+}
+
+io.out(add(3, 4))
+
+-- Fibonacci
+fn fib(n) {
+  if n <= 1 { rt n }
+  rt fib(n - 1) + fib(n - 2)
+}
+
+fr i : 0..10 {
+  io.out(fib(i))
+}
+
+-- Variables
+vr count = 0
+fr i : 0..5 {
+  count += 1
+}
+io.out(count)
+
+-- TOON data
+lt user = @{name|"Ada" age|30}
+io.out(user.name)
+io.out(user.age)
+
+-- Lists
+lt nums = @[10 20 30]
+io.out(nums[0])
+io.out(len(nums))
+
+-- Control flow
+lt x = 42
+if x > 100 {
+  io.out("big")
+} ef x > 10 {
+  io.out("medium")
+} el {
+  io.out("small")
+}
+
+-- While loop
+vr n = 5
+vr fact = 1
+wl n > 0 {
+  fact *= n
+  n -= 1
+}
+io.out(fact)

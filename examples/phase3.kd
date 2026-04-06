@@ -1,0 +1,70 @@
+-- Kode Phase 3 — Functions & Composition
+
+-- Extension functions
+ext str {
+  fn is_email() -> str.contains(self, "@")
+  fn shout() -> str.upper(self) + "!"
+  fn words() -> str.split(self, " ")
+}
+
+io.out("hello@mail.com".is_email())
+io.out("hello".shout())
+io.out("one two three".words())
+
+ext num {
+  fn double() -> self * 2
+  fn is_even() -> self % 2 == 0
+  fn clamp(min, max) {
+    if self < min { rt min }
+    if self > max { rt max }
+    rt self
+  }
+}
+
+io.out(5.double())
+io.out(4.is_even())
+io.out(15.clamp(0, 10))
+
+-- Decorators
+@cached
+fn fib(n) {
+  if n <= 1 { rt n }
+  rt fib(n - 1) + fib(n - 2)
+}
+
+io.out(fib(30))
+
+-- Contracts
+fn withdraw(balance, amount) {
+  pre: amount > 0
+  pre: balance >= amount
+  post: result >= 0
+  rt balance - amount
+}
+
+io.out(withdraw(100, 30))
+
+-- Higher-order function patterns
+fn compose(f, g) -> |x| -> f(g(x))
+fn add1(x) -> x + 1
+fn mul2(x) -> x * 2
+
+lt add1_then_double = compose(mul2, add1)
+io.out(add1_then_double(5))
+
+-- Closures
+fn counter(start) {
+  vr n = start
+  lt inc = || { n += 1; rt n }
+  lt get_val = || { rt n }
+  rt @{inc|inc val|get_val}
+}
+
+-- Pipeline example
+lt data = @[3 1 4 1 5 9 2 6 5 3]
+lt result = data
+  |> lst.unique()
+  |> lst.filter(|x| -> x > 3)
+  |> lst.sort()
+  |> lst.map(|x| -> x * 10)
+io.out(result)

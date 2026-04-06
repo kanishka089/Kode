@@ -1,0 +1,21 @@
+{
+  "name": "kode-lang",
+  "displayName": "Kode Language",
+  "description": "Syntax highlighting for the Kode programming language",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [{
+      "id": "kode",
+      "aliases": ["Kode", "kode"],
+      "extensions": [".kd"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "kode",
+      "scopeName": "source.kode",
+      "path": "./syntaxes/kode.tmLanguage.json"
+    }]
+  }
+}

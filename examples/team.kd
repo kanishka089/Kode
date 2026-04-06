@@ -1,0 +1,57 @@
+-- Kode Phase 4 — Multi-Agent Collaboration
+
+-- Define agents
+ag Researcher {
+  vr findings = @[]
+
+  on "start" () {
+    io.out("Researcher: ready")
+  }
+
+  on "search" (p) {
+    io.out("Researcher: searching for " + p.query)
+    lt result = "Found 3 results for: " + p.query
+    findings = findings + @[result]
+    em "Writer" @{type|"write" data|result}
+  }
+}
+
+ag Writer {
+  vr drafts = @[]
+
+  on "start" () {
+    io.out("Writer: ready")
+  }
+
+  on "write" (p) {
+    io.out("Writer: writing article from: " + p.data)
+    lt draft = "Article: " + p.data
+    drafts = drafts + @[draft]
+    em "Reviewer" @{type|"review" article|draft}
+  }
+}
+
+ag Reviewer {
+  vr reviewed = 0
+
+  on "start" () {
+    io.out("Reviewer: ready")
+  }
+
+  on "review" (p) {
+    reviewed += 1
+    io.out("Reviewer: reviewing - " + p.article)
+    io.out("Reviewer: APPROVED")
+  }
+}
+
+-- Spawn all agents
+lt r = sp Researcher
+lt w = sp Writer
+lt rv = sp Reviewer
+
+-- Send a task to the researcher
+em r @{type|"search" query|"AI agents 2026"}
+em r @{type|"search" query|"token efficient languages"}
+
+io.out("--- All tasks processed ---")
