@@ -24,6 +24,9 @@ import { registerLogStdlib } from './stdlib/log.js';
 import { registerUrlStdlib } from './stdlib/url-mod.js';
 import { registerCsvStdlib } from './stdlib/csv.js';
 import { registerYamlStdlib } from './stdlib/yaml-mod.js';
+import { registerNetStdlib } from './stdlib/net.js';
+import { registerTimeStdlib } from './stdlib/time.js';
+import { registerSetStdlib } from './stdlib/set-mod.js';
 import { stringify, KodeValue } from './evaluator/values.js';
 import { TokenType } from './lexer/tokens.js';
 import { formatError } from './errors/reporter.js';
@@ -54,6 +57,9 @@ function createGlobalEnv(): Environment {
   registerUrlStdlib(env);
   registerCsvStdlib(env);
   registerYamlStdlib(env);
+  registerNetStdlib(env);
+  registerTimeStdlib(env);
+  registerSetStdlib(env);
   registerKodeRuntime(env, (source, evalEnv) => {
     const tokens = new Lexer(source).tokenize();
     const ast = new Parser(tokens).parse();
