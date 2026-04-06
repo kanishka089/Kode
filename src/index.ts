@@ -13,6 +13,9 @@ import { registerDbStdlib } from './stdlib/db.js';
 import { stringify, KodeValue } from './evaluator/values.js';
 import { TokenType } from './lexer/tokens.js';
 import { formatError } from './errors/reporter.js';
+import { kpmInit, kpmAdd, kpmPublish, kpmSearch, kpmList } from './runtime/kpm.js';
+import { listFeatures } from './runtime/features.js';
+import { intelligence } from './runtime/intelligence.js';
 
 const VERSION = '0.1.0';
 
@@ -171,6 +174,31 @@ if (args.length === 0) {
   console.log('  kode --version         Print version');
 } else if (args[0] === '--time' && args[1]) {
   runFile(args[1], true);
+} else if (args[0] === 'kpm') {
+  const sub = args[1];
+  if (sub === 'init') kpmInit(args[2]);
+  else if (sub === 'add' && args[2]) kpmAdd(args[2]);
+  else if (sub === 'publish') kpmPublish();
+  else if (sub === 'search' && args[2]) kpmSearch(args[2]);
+  else if (sub === 'list') kpmList();
+  else console.log('Usage: kode kpm [init|add|publish|search|list]');
+} else if (args[0] === 'features') {
+  console.log('Kode Feature Flags:\n');
+  for (const f of listFeatures()) {
+    console.log(`  ${f.enabled ? '\x1b[32m✓\x1b[0m' : '\x1b[90m○\x1b[0m'} ${f.name}`);
+  }
+  console.log('\nEnable in code: #feature "name"');
+} else if (args[0] === 'migrate') {
+  console.log('[migrate] Auto-migration not yet needed (Kode is v0.1.0)');
+  console.log('[migrate] Will be available when breaking changes are introduced');
+} else if (args[0] === 'telemetry') {
+  if (args[1] === 'on') { intelligence.enable(); console.log('Telemetry enabled'); }
+  else if (args[1] === 'off') { intelligence.disable(); console.log('Telemetry disabled'); }
+  else if (args[1] === 'report') {
+    const report = intelligence.getReport();
+    console.log(JSON.stringify(report, null, 2));
+  }
+  else console.log('Usage: kode telemetry [on|off|report]');
 } else {
   runFile(args[0]);
 }
