@@ -1,0 +1,115 @@
+-- ============================================================
+-- KODE TUTORIAL: Variables & Types
+-- ============================================================
+-- This tutorial covers:
+--   - Declaring variables with lt (immutable) and vr (mutable)
+--   - Data types: num, str, bool, nl
+--   - Type annotations (optional)
+--   - Assignment and compound assignment
+-- ============================================================
+
+-- ---- IMMUTABLE VARIABLES (lt) ----
+-- Use 'lt' to declare a variable that cannot be changed.
+-- 'lt' is short for 'let' — Kode uses 2-char keywords to save tokens.
+
+lt name = "Kode"
+lt version = 1
+lt pi = 3.14159
+lt active = tr          -- tr = true (short for token efficiency)
+lt nothing = nl         -- nl = null
+
+io.out(name)            -- Kode
+io.out(version)         -- 1
+io.out(pi)              -- 3.14159
+io.out(active)          -- tr
+io.out(nothing)         -- nl
+
+-- Trying to reassign an immutable variable causes an error:
+-- name = "Other"  -- ERROR: Cannot reassign immutable variable 'name'
+
+-- ---- MUTABLE VARIABLES (vr) ----
+-- Use 'vr' to declare a variable that CAN be changed.
+-- 'vr' is short for 'var'.
+
+vr count = 0
+io.out(count)           -- 0
+count = 10
+io.out(count)           -- 10
+
+-- ---- COMPOUND ASSIGNMENT ----
+-- Modify a mutable variable in place.
+
+vr x = 100
+x += 50                 -- x = x + 50 = 150
+io.out(x)               -- 150
+x -= 30                 -- x = 150 - 30 = 120
+io.out(x)               -- 120
+x *= 2                  -- x = 120 * 2 = 240
+io.out(x)               -- 240
+x /= 4                  -- x = 240 / 4 = 60
+io.out(x)               -- 60
+
+-- ---- DATA TYPES ----
+-- Kode has 4 primitive types:
+
+lt a_num = 42           -- num: integers and floats
+lt a_float = 3.14       -- num: floats
+lt a_str = "hello"      -- str: text in double quotes
+lt a_bool = tr          -- bool: tr (true) or fl (false)
+lt a_null = nl          -- nl: absence of value
+
+-- Check type with type() function:
+io.out(type(a_num))     -- num
+io.out(type(a_str))     -- str
+io.out(type(a_bool))    -- bool
+io.out(type(a_null))    -- null
+
+-- ---- NUMBER FORMATS ----
+-- Kode supports multiple number formats:
+
+lt decimal = 1000
+lt hex = 0xFF           -- hexadecimal = 255
+lt binary = 0b1010      -- binary = 10
+lt with_sep = 1_000_000 -- underscores for readability = 1000000
+lt scientific = 1.5e10  -- scientific notation
+
+io.out(hex)             -- 255
+io.out(binary)          -- 10
+io.out(with_sep)        -- 1000000
+
+-- ---- TYPE CONVERSION ----
+-- Convert between types:
+
+lt n = num("42")        -- str -> num: 42
+lt s = len("hello")     -- str length: 5
+lt b = bool(1)          -- num -> bool: tr (any non-zero is true)
+
+io.out(n + 8)           -- 50
+io.out(b)               -- tr
+
+-- ---- STRING CONCATENATION ----
+-- Use + to join strings:
+
+lt greeting = "Hello" + ", " + "World!"
+io.out(greeting)        -- Hello, World!
+
+-- ---- NULL COALESCING (??) ----
+-- Provide a default when a value might be null:
+
+lt maybe_name = nl
+lt safe_name = maybe_name ?? "Anonymous"
+io.out(safe_name)       -- Anonymous
+
+lt real_name = "Ada"
+lt used_name = real_name ?? "Anonymous"
+io.out(used_name)       -- Ada (not null, so ?? returns left side)
+
+-- ============================================================
+-- SUMMARY:
+--   lt x = value     Immutable (cannot change)
+--   vr x = value     Mutable (can change)
+--   x += 1           Compound assignment (also -= *= /=)
+--   Types: num, str, bool, nl
+--   type(x)          Check type
+--   x ?? default     Null coalescing
+-- ============================================================
