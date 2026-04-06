@@ -1,0 +1,70 @@
+-- ============================================================
+-- REAL-WORLD: Chat Bot with State + Memory
+-- ============================================================
+-- A conversational bot that tracks context and learns.
+-- ============================================================
+
+st ConvoState {
+  "greeting"  { on "next" -> "name" }
+  "name"      { on "next" -> "topic" }
+  "topic"     { on "next" -> "chat" }
+  "chat"      { on "done" -> "farewell" }
+  "farewell"  {}
+}
+
+ag ChatBot {
+  vr state = ConvoState.new()
+  vr user_name = ""
+  vr topic = ""
+  vr msg_count = 0
+
+  on "message" (p) {
+    msg_count += 1
+    mem.e.log(@{event|"message" from|"user" text|p.text count|msg_count})
+
+    mt state.state {
+      "greeting" -> {
+        io.out("Bot: Hello! I'm Kode Bot. What's your name?")
+        state.send("next")
+      }
+      "name" -> {
+        user_name = p.text
+        mem.s.store("user:" + user_name, @{name|user_name first_seen|"today"})
+        io.out("Bot: Nice to meet you, " + user_name + "! What would you like to talk about?")
+        state.send("next")
+      }
+      "topic" -> {
+        topic = p.text
+        io.out("Bot: Great! Let's discuss " + topic + ". Tell me what you think.")
+        state.send("next")
+      }
+      "chat" -> {
+        if p.text == "bye" | p.text == "quit" {
+          state.send("done")
+          io.out("Bot: Thanks for chatting, " + user_name + "! We discussed " + topic + " (" + msg_count + " messages)")
+        } el {
+          io.out("Bot: Interesting thought about " + topic + "! Tell me more.")
+          -- Remember key points
+          mem.s.store("chat:" + topic + ":" + msg_count, p.text)
+        }
+      }
+      _ -> {
+        io.out("Bot: Goodbye! Come back anytime.")
+      }
+    }
+  }
+}
+
+-- Run the bot
+lt bot = sp ChatBot
+em bot @{type|"message" text|"hi"}
+em bot @{type|"message" text|"Ada"}
+em bot @{type|"message" text|"AI agents"}
+em bot @{type|"message" text|"They can write code!"}
+em bot @{type|"message" text|"And collaborate in teams"}
+em bot @{type|"message" text|"bye"}
+
+io.out("\n--- Bot Memory ---")
+io.out("Events: " + mem.e.len())
+lt chat_memories = mem.s.search("chat", 10)
+io.out("Chat memories: " + len(chat_memories))

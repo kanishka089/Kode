@@ -1,0 +1,86 @@
+-- ============================================================
+-- REFERENCE: All Kode Operators
+-- ============================================================
+
+-- ---- ARITHMETIC ----
+io.out(10 + 3)       -- 13    Addition
+io.out(10 - 3)       -- 7     Subtraction
+io.out(10 * 3)       -- 30    Multiplication
+io.out(10 / 3)       -- 3.33  Division
+io.out(10 % 3)       -- 1     Modulo (remainder)
+io.out(2 ** 10)      -- 1024  Power (exponentiation)
+
+-- ---- COMPARISON ----
+io.out(5 == 5)       -- tr    Equal
+io.out(5 != 3)       -- tr    Not equal
+io.out(5 < 10)       -- tr    Less than
+io.out(5 > 10)       -- fl    Greater than
+io.out(5 <= 5)       -- tr    Less or equal
+io.out(5 >= 10)      -- fl    Greater or equal
+
+-- ---- LOGICAL ----
+io.out(tr & tr)      -- tr    AND (both must be truthy)
+io.out(tr & fl)      -- fl
+io.out(fl | tr)      -- tr    OR (either must be truthy)
+io.out(fl | fl)      -- fl
+io.out(!tr)          -- fl    NOT (negate)
+io.out(!fl)          -- tr
+
+-- ---- ASSIGNMENT ----
+vr x = 10            -- =     Assign
+x += 5               -- +=    Add and assign (x = x + 5)
+x -= 3               -- -=    Subtract and assign
+x *= 2               -- *=    Multiply and assign
+x /= 4               -- /=    Divide and assign
+
+-- ---- NULL ----
+io.out(nl ?? "default")   -- ??   Null coalescing (left if not null, else right)
+-- user?.name              -- ?.   Optional chaining (access if not null)
+
+-- ---- PIPE ----
+lt result = @[1 2 3]
+  |> lst.map(|x| -> x * 2)    -- |>   Pipe (pass left as first arg to right)
+
+-- ---- RANGE ----
+fr i : 0..5 { }      -- ..    Range (exclusive end): 0,1,2,3,4
+-- fr i : 0..=5 { }  -- ..=   Range (inclusive end): 0,1,2,3,4,5
+
+-- ---- ARROW ----
+fn f(x) -> x * 2     -- ->    Arrow (single-expression function body)
+
+-- ---- TYPE ----
+-- lt x :: num = 42   -- ::    Type annotation (optional)
+
+-- ---- SPREAD ----
+-- @[...old 4 5]      -- ...   Spread (expand list/map into another)
+
+-- ---- DOT ----
+lt m = @{x|1}
+io.out(m.x)           -- .     Member access
+
+-- ---- INDEX ----
+lt l = @[10 20 30]
+io.out(l[1])          -- []    Index access
+
+-- ---- SPECIAL ----
+-- @{key|value}        -- @{    TOON map open
+-- @[1 2 3]            -- @[    TOON list open
+-- |x| -> x * 2       -- ||    Lambda parameter delimiters
+-- @decorator          -- @     Decorator prefix
+-- #test "name" {}     -- #     Test block prefix
+
+-- ============================================================
+-- PRECEDENCE (low to high):
+--   1. |>  (pipe)
+--   2. ??  (null coalessce)
+--   3. |   (logical OR)
+--   4. &   (logical AND)
+--   5. == !=  (equality)
+--   6. < > <= >=  (comparison)
+--   7. ..  (range)
+--   8. + -  (addition)
+--   9. * / %  (multiplication)
+--  10. **  (power, right-associative)
+--  11. ! -  (unary)
+--  12. () [] .  (call, index, member)
+-- ============================================================

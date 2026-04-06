@@ -1,0 +1,173 @@
+-- ============================================================
+-- KODE TUTORIAL: Control Flow
+-- ============================================================
+-- This tutorial covers:
+--   - if / ef / el (if, else-if, else)
+--   - wl (while loop)
+--   - lp (infinite loop + break)
+--   - fr (for-each with lists and ranges)
+--   - mt (match / pattern matching)
+--   - br (break) and nx (next/continue)
+-- ============================================================
+
+-- ---- IF / EF / EL ----
+-- Kode uses 'ef' instead of 'else if' and 'el' instead of 'else'.
+
+lt temperature = 25
+
+if temperature > 35 {
+  io.out("Hot!")
+} ef temperature > 20 {
+  io.out("Warm")
+} ef temperature > 10 {
+  io.out("Cool")
+} el {
+  io.out("Cold!")
+}
+-- Output: Warm
+
+-- if as an expression (returns a value):
+lt x = 15
+lt category = if x > 100 { "big" } ef x > 10 { "medium" } el { "small" }
+io.out(category)              -- medium
+
+-- ---- WHILE LOOP (wl) ----
+-- Loops while a condition is true.
+
+vr n = 5
+vr result = 1
+wl n > 0 {
+  result *= n
+  n -= 1
+}
+io.out(result)                -- 120 (5! factorial)
+
+-- Countdown:
+vr count = 3
+wl count > 0 {
+  io.out(count)
+  count -= 1
+}
+io.out("Go!")
+-- Output: 3, 2, 1, Go!
+
+-- ---- INFINITE LOOP (lp) + BREAK (br) ----
+-- Use 'lp' for loops that run until explicitly broken.
+
+vr i = 0
+lp {
+  i += 1
+  if i == 5 { br }           -- br = break, exits the loop
+}
+io.out(i)                     -- 5
+
+-- Search pattern:
+lt items = @["apple" "banana" "cherry" "date"]
+vr found = nl
+vr idx = 0
+lp {
+  if idx >= len(items) { br }
+  if items[idx] == "cherry" {
+    found = idx
+    br
+  }
+  idx += 1
+}
+io.out(found)                 -- 2
+
+-- ---- FOR-EACH (fr) ----
+-- Iterate over lists, ranges, or maps.
+
+-- Over a list:
+lt fruits = @["apple" "banana" "cherry"]
+fr fruit : fruits {
+  io.out(fruit)
+}
+-- Output: apple, banana, cherry
+
+-- Over a range (exclusive end):
+fr i : 0..5 {
+  io.out(i)
+}
+-- Output: 0, 1, 2, 3, 4
+
+-- With index:
+fr i, fruit : fruits {
+  io.out("${i}: ${fruit}")
+}
+-- Output: 0: apple, 1: banana, 2: cherry
+
+-- ---- BREAK (br) and NEXT (nx) ----
+-- br = exit the loop entirely
+-- nx = skip to next iteration (like 'continue')
+
+-- Skip even numbers:
+fr i : 0..10 {
+  if i % 2 == 0 { nx }       -- skip evens
+  io.out(i)
+}
+-- Output: 1, 3, 5, 7, 9
+
+-- Stop at first match:
+fr item : @[1 3 5 7 2 9] {
+  if item % 2 == 0 {
+    io.out("First even: " + item)
+    br
+  }
+}
+-- Output: First even: 2
+
+-- ---- MATCH (mt) ----
+-- Pattern matching — cleaner than if/ef chains for value matching.
+
+lt day = 3
+mt day {
+  1 -> io.out("Monday")
+  2 -> io.out("Tuesday")
+  3 -> io.out("Wednesday")
+  4 -> io.out("Thursday")
+  5 -> io.out("Friday")
+  _ -> io.out("Weekend")     -- _ = catch-all (wildcard)
+}
+-- Output: Wednesday
+
+-- Match with blocks:
+lt code = 404
+mt code {
+  200 -> { io.out("OK") }
+  404 -> {
+    io.out("Not Found")
+    io.out("Check the URL")
+  }
+  500 -> { io.out("Server Error") }
+  _ -> { io.out("Unknown: " + code) }
+}
+-- Output: Not Found, Check the URL
+
+-- ---- COMBINING PATTERNS ----
+-- FizzBuzz in Kode:
+fr i : 1..16 {
+  if i % 15 == 0 {
+    io.out("FizzBuzz")
+  } ef i % 3 == 0 {
+    io.out("Fizz")
+  } ef i % 5 == 0 {
+    io.out("Buzz")
+  } el {
+    io.out(i)
+  }
+}
+
+-- ============================================================
+-- SUMMARY:
+--   if cond { } ef cond { } el { }    Conditional
+--   wl cond { }                        While loop
+--   lp { }                             Infinite loop
+--   fr item : iterable { }            For-each
+--   fr i, item : list { }             For-each with index
+--   fr i : 0..10 { }                  Range loop
+--   mt value { pattern -> body }       Match/pattern matching
+--   br                                 Break out of loop
+--   nx                                 Skip to next iteration
+--   _ (wildcard)                       Match anything
+-- ============================================================

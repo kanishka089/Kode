@@ -1,0 +1,146 @@
+-- ============================================================
+-- KODE TUTORIAL: Functions
+-- ============================================================
+-- This tutorial covers:
+--   - Declaring functions with fn
+--   - Return values with rt
+--   - Arrow functions (single expression)
+--   - Lambdas (anonymous functions)
+--   - Closures (capturing variables)
+--   - Higher-order functions
+--   - Recursion
+-- ============================================================
+
+-- ---- BASIC FUNCTIONS ----
+-- Use 'fn' to declare, 'rt' to return.
+
+fn greet(name) {
+  rt "Hello, " + name + "!"
+}
+io.out(greet("Ada"))          -- Hello, Ada!
+
+-- Multiple parameters:
+fn add(a, b) {
+  rt a + b
+}
+io.out(add(3, 4))             -- 7
+
+-- No explicit return = returns nl (null):
+fn log_msg(msg) {
+  io.out("LOG: " + msg)
+}
+log_msg("test")               -- LOG: test
+
+-- ---- ARROW FUNCTIONS ----
+-- For single-expression functions, use -> instead of { rt ... }
+-- This saves tokens — no braces, no rt keyword.
+
+fn double(x) -> x * 2
+fn square(x) -> x * x
+fn max(a, b) -> if a > b { a } el { b }
+
+io.out(double(5))             -- 10
+io.out(square(4))             -- 16
+io.out(max(10, 20))           -- 20
+
+-- ---- LAMBDAS (Anonymous Functions) ----
+-- Use |params| -> expr for inline functions.
+-- These are perfect for passing to map, filter, etc.
+
+lt triple = |x| -> x * 3
+io.out(triple(7))             -- 21
+
+-- Lambda with multiple params:
+lt multiply = |a, b| -> a * b
+io.out(multiply(6, 7))        -- 42
+
+-- Lambda with block body:
+lt compute = |a, b| {
+  lt sum = a + b
+  lt product = a * b
+  rt sum + product
+}
+io.out(compute(3, 4))         -- 19 (7 + 12)
+
+-- ---- CLOSURES ----
+-- Functions capture variables from their enclosing scope.
+-- This is how you create functions that "remember" state.
+
+fn make_adder(x) {
+  -- This lambda captures 'x' from the outer function
+  rt |y| -> x + y
+}
+
+lt add5 = make_adder(5)
+lt add10 = make_adder(10)
+
+io.out(add5(3))               -- 8
+io.out(add10(3))              -- 13
+
+-- Closure with mutable state:
+fn make_counter() {
+  vr count = 0
+  rt || {
+    count += 1
+    rt count
+  }
+}
+
+lt counter = make_counter()
+io.out(counter())             -- 1
+io.out(counter())             -- 2
+io.out(counter())             -- 3
+
+-- ---- HIGHER-ORDER FUNCTIONS ----
+-- Functions that take other functions as arguments.
+
+fn apply(f, x) {
+  rt f(x)
+}
+io.out(apply(double, 5))      -- 10
+io.out(apply(|x| -> x + 1, 5))  -- 6
+
+-- Function composition:
+fn compose(f, g) -> |x| -> f(g(x))
+
+lt double_then_add1 = compose(|x| -> x + 1, |x| -> x * 2)
+io.out(double_then_add1(5))   -- 11 (5*2=10, 10+1=11)
+
+-- ---- RECURSION ----
+-- Functions can call themselves. Kode has a 10,000 depth limit.
+
+fn factorial(n) {
+  if n <= 1 { rt 1 }
+  rt n * factorial(n - 1)
+}
+io.out(factorial(5))          -- 120
+io.out(factorial(10))         -- 3628800
+
+fn fib(n) {
+  if n <= 1 { rt n }
+  rt fib(n - 1) + fib(n - 2)
+}
+io.out(fib(10))               -- 55
+
+-- ---- FUNCTIONS AS VALUES ----
+-- Functions are first-class values. Store them, pass them, return them.
+
+lt operations = @{
+  add|add
+  double|double
+  square|square
+}
+
+lt op = operations.add
+io.out(op(10, 20))            -- 30
+
+-- ============================================================
+-- SUMMARY:
+--   fn name(params) { rt value }     Block function
+--   fn name(params) -> expr          Arrow function
+--   |params| -> expr                 Lambda (anonymous)
+--   |params| { body }               Lambda with block
+--   Closures capture enclosing vars
+--   Functions are first-class values
+--   Max recursion depth: 10,000
+-- ============================================================

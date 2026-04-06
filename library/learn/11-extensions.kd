@@ -1,0 +1,130 @@
+-- ============================================================
+-- KODE TUTORIAL: Extensions, Decorators & Contracts
+-- ============================================================
+-- Covers: ext (add methods to types), @ decorators,
+--         pre/post contracts
+-- ============================================================
+
+-- ---- EXTENSION FUNCTIONS (ext) ----
+-- Add new methods to existing types without modifying them.
+-- 'self' refers to the value being extended.
+
+ext str {
+  fn is_email() -> str.contains(self, "@") & str.contains(self, ".")
+  fn shout() -> str.upper(self) + "!"
+  fn words() -> str.split(self, " ")
+  fn reverse_str() {
+    vr result = ""
+    fr i : 0..str.len(self) {
+      result = str.slice(self, i, i + 1) + result
+    }
+    rt result
+  }
+}
+
+io.out("ada@kode.dev".is_email())     -- tr
+io.out("hello".shout())               -- HELLO!
+io.out("one two three".words())       -- @[one two three]
+
+ext num {
+  fn is_even() -> self % 2 == 0
+  fn is_positive() -> self > 0
+  fn double() -> self * 2
+  fn clamp(min, max) {
+    if self < min { rt min }
+    if self > max { rt max }
+    rt self
+  }
+}
+
+io.out(4.is_even())                   -- tr
+io.out(7.is_even())                   -- fl
+io.out(5.double())                    -- 10
+io.out(15.clamp(0, 10))               -- 10
+io.out((-5).clamp(0, 10))             -- 0
+
+-- ---- DECORATORS (@) ----
+-- Decorators wrap functions with extra behavior.
+
+-- @cached: Memoize function results (same args = cached result)
+@cached
+fn fib(n) {
+  if n <= 1 { rt n }
+  rt fib(n - 1) + fib(n - 2)
+}
+io.out(fib(30))                        -- 832040 (instant with cache)
+io.out(fib(40))                        -- 102334155 (still instant)
+
+-- @log: Print function entry and exit
+@log
+fn process(data) {
+  rt data * 2
+}
+process(21)
+-- Output: [log] process(21)
+-- Output: [log] process -> 42
+
+-- ---- CONTRACTS (pre/post) ----
+-- Pre: validate inputs BEFORE function runs
+-- Post: validate outputs AFTER function runs
+
+fn divide(a, b) {
+  pre: b != 0
+  rt a / b
+}
+io.out(divide(10, 2))                  -- 5
+
+fn safe_sqrt(x) {
+  pre: x >= 0
+  post: result >= 0
+  rt math.sqrt(x)
+}
+io.out(safe_sqrt(16))                  -- 4
+
+-- Multiple conditions:
+fn transfer(balance, amount) {
+  pre: amount > 0
+  pre: balance >= amount
+  pre: amount <= 10000
+  post: result >= 0
+  post: result == balance - amount
+  rt balance - amount
+}
+io.out(transfer(1000, 250))            -- 750
+
+-- Contract violations throw errors:
+tx {
+  divide(10, 0)
+} ct e {
+  io.out("Caught: " + e)              -- Precondition failed
+}
+
+-- ---- COMBINING ALL THREE ----
+
+ext str {
+  fn is_valid_name() -> str.len(self) >= 2 & str.len(self) <= 50
+}
+
+fn create_user(name, age) {
+  pre: name.is_valid_name()
+  pre: age >= 0
+  pre: age <= 150
+  rt @{name|name age|age id|crypto.random_bytes(8)}
+}
+
+@cached
+fn get_greeting(name) -> "Welcome, " + name + "!"
+
+lt user = create_user("Ada", 30)
+io.out(get_greeting(user.name))        -- Welcome, Ada!
+
+-- ============================================================
+-- SUMMARY:
+--   ext type { fn method() -> self... }   Add methods to types
+--   self                                   The extended value
+--   @cached fn name() { }                 Memoize results
+--   @log fn name() { }                    Log entry/exit
+--   pre: condition                         Validate inputs
+--   post: condition                        Validate outputs
+--   result (in post)                       The return value
+-- ============================================================

@@ -1,0 +1,69 @@
+-- ============================================================
+-- COOKBOOK: JSON & CSV Processing
+-- ============================================================
+
+-- ---- JSON PARSE ----
+lt json_str = '{"name":"Ada","age":30,"skills":["Kode","Python"]}'
+lt data = json.parse(json_str)
+io.out(data.name)                     -- Ada
+io.out(data.age)                      -- 30
+io.out(data.skills[0])                -- Kode
+
+-- ---- JSON STRINGIFY ----
+lt user = @{name|"Bob" age|25 active|tr}
+io.out(json.to_str(user))            -- pretty-printed JSON
+io.out(json.to_compact(user))        -- {"name":"Bob","age":25,"active":true}
+
+-- ---- JSON ROUNDTRIP ----
+lt original = @{items|@[1 2 3] count|3}
+lt serialized = json.to_compact(original)
+lt restored = json.parse(serialized)
+assert_eq(restored.count, 3)
+
+-- ---- CSV PARSE ----
+lt csv_str = "name,age,city\nAda,30,London\nBob,25,Paris\nCal,35,Tokyo"
+lt rows = csv.parse(csv_str)
+io.out(len(rows))                     -- 3
+io.out(rows[0].name)                  -- Ada
+io.out(rows[2].city)                  -- Tokyo
+
+-- ---- CSV GENERATE ----
+lt people = @[
+  @{name|"Ada" age|30 city|"London"}
+  @{name|"Bob" age|25 city|"Paris"}
+]
+lt csv_output = csv.to_str(people)
+io.out(csv_output)
+-- name,age,city
+-- Ada,30,London
+-- Bob,25,Paris
+
+-- ---- CSV ROUNDTRIP ----
+lt data2 = @[@{x|1 y|2} @{x|3 y|4}]
+lt csv2 = csv.to_str(data2)
+lt parsed2 = csv.parse(csv2)
+io.out(parsed2[1].y)                  -- 4
+
+-- ---- YAML PARSE ----
+lt yaml_str = "name: Kode\nversion: 1\ndebug: true"
+lt config = yaml.parse(yaml_str)
+io.out(config.name)                   -- Kode
+io.out(config.version)                -- 1
+io.out(config.debug)                  -- tr
+
+-- ---- YAML GENERATE ----
+lt settings = @{theme|"dark" lang|"en" port|3000}
+io.out(yaml.to_str(settings))
+-- theme: dark
+-- lang: en
+-- port: 3000
+
+-- ---- CONVERT BETWEEN FORMATS ----
+-- JSON → TOON: json.parse()
+-- TOON → JSON: json.to_str()
+-- CSV → TOON: csv.parse()
+-- TOON → CSV: csv.to_str()
+-- YAML → TOON: yaml.parse()
+-- TOON → YAML: yaml.to_str()
+
+-- All data goes through TOON (Kode's native format) as the hub.

@@ -1,0 +1,91 @@
+-- ============================================================
+-- KODE TUTORIAL: Strings
+-- ============================================================
+-- Covers: interpolation, raw strings, multi-line, escapes,
+--         string module operations, concatenation
+-- ============================================================
+
+-- ---- STRING TYPES ----
+
+-- Double quotes: support interpolation with ${}
+lt name = "Kode"
+io.out("Hello, ${name}!")              -- Hello, Kode!
+io.out("2 + 3 = ${2 + 3}")            -- 2 + 3 = 5
+io.out("${str.upper(name)} rules!")    -- KODE rules!
+
+-- Single quotes: raw strings (no interpolation)
+lt raw = 'Hello, ${name}!'
+io.out(raw)                            -- Hello, ${name}! (literal)
+
+-- Empty string:
+lt empty = ""
+io.out(len(empty))                     -- 0
+
+-- ---- ESCAPE SEQUENCES ----
+-- In double-quoted strings:
+--   \n = newline, \t = tab, \\ = backslash, \" = quote
+
+io.out("line1\nline2")                 -- two lines
+io.out("col1\tcol2")                   -- tab separated
+io.out("she said \"hi\"")             -- she said "hi"
+
+-- ---- STRING OPERATIONS ----
+-- The str module has all common operations:
+
+lt s = "Hello, World!"
+
+io.out(str.upper(s))                   -- HELLO, WORLD!
+io.out(str.lower(s))                   -- hello, world!
+io.out(str.trim("  hi  "))            -- hi
+io.out(str.len(s))                     -- 13
+io.out(str.contains(s, "World"))       -- tr
+io.out(str.starts(s, "Hello"))         -- tr
+io.out(str.ends(s, "!"))               -- tr
+io.out(str.replace(s, "World", "Kode"))  -- Hello, Kode!
+
+-- Split and join:
+lt parts = str.split("a-b-c", "-")
+io.out(parts)                          -- @[a b c]
+io.out(str.join(parts, "+"))           -- a+b+c
+
+-- Slice:
+io.out(str.slice(s, 0, 5))            -- Hello
+
+-- ---- CONCATENATION ----
+-- Use + to join strings:
+
+lt full = "Hello" + " " + "World"
+io.out(full)                           -- Hello World
+
+-- Number + string auto-converts:
+io.out("Score: " + 100)               -- Score: 100
+io.out("Items: " + 3)                 -- Items: 3
+
+-- ---- BUILDING STRINGS IN LOOPS ----
+vr csv = "name,age\n"
+lt users = @[@{name|"Ada" age|30} @{name|"Bob" age|25}]
+fr u : users {
+  csv = csv + u.name + "," + u.age + "\n"
+}
+io.out(csv)
+
+-- ---- REGEX ON STRINGS ----
+-- Use the re module for pattern matching:
+
+io.out(re.test("^[0-9]+$", "12345"))   -- tr
+io.out(re.test("^[0-9]+$", "abc"))     -- fl
+io.out(re.replace("hello 123 world 456", "[0-9]+", "NUM"))  -- hello NUM world NUM
+
+-- ============================================================
+-- SUMMARY:
+--   "hello ${expr}"     Interpolated string
+--   'raw ${literal}'    Raw string (no interpolation)
+--   \n \t \\ \"         Escape sequences
+--   str.upper/lower     Case conversion
+--   str.split/join      Split and join
+--   str.contains        Check if contains substring
+--   str.replace         Replace all occurrences
+--   str.trim            Remove whitespace
+--   "a" + "b"           Concatenation
+--   re.test/replace     Regex operations
+-- ============================================================

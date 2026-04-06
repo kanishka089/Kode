@@ -1,0 +1,149 @@
+-- ============================================================
+-- KODE TUTORIAL: Memory System
+-- ============================================================
+-- Kode has 4 built-in memory types, inspired by cognitive science:
+--   mem.w = Working memory (volatile, current task)
+--   mem.s = Semantic memory (persistent facts/knowledge)
+--   mem.e = Episodic memory (event log/history)
+--   mem.p = Procedural memory (learned skills/functions)
+-- ============================================================
+
+-- ---- WORKING MEMORY (mem.w) ----
+-- Short-term, volatile. Gone when the program ends.
+-- Use for: current task context, temporary state, scratchpad.
+
+mem.w.set("current_task", "Process invoices")
+mem.w.set("batch_size", 50)
+mem.w.set("started_at", "2026-04-06T10:00:00")
+
+io.out(mem.w.get("current_task"))   -- Process invoices
+io.out(mem.w.has("batch_size"))     -- tr
+io.out(mem.w.keys())                -- @[current_task batch_size started_at]
+
+mem.w.delete("started_at")
+io.out(mem.w.has("started_at"))     -- fl
+
+mem.w.clear()                       -- remove everything
+io.out(mem.w.keys())                -- @[]
+
+-- ---- SEMANTIC MEMORY (mem.s) ----
+-- Long-term facts and knowledge. Searchable.
+-- Use for: user preferences, learned facts, configuration.
+
+mem.s.store("user:ada", @{name|"Ada" role|"developer" lang|"Kode"})
+mem.s.store("user:bob", @{name|"Bob" role|"designer" lang|"Figma"})
+mem.s.store("config:theme", "dark")
+mem.s.store("fact:kode:tokens", "48% fewer than Python")
+
+-- Recall by exact key:
+lt ada = mem.s.recall("user:ada")
+io.out(ada.name + " is a " + ada.role)   -- Ada is a developer
+
+-- Search by keyword (returns matching entries):
+lt users = mem.s.search("user", 10)
+io.out(len(users))                        -- 2
+
+lt kode_facts = mem.s.search("kode", 5)
+io.out(len(kode_facts))                   -- 2
+
+-- Check existence:
+io.out(mem.s.has("user:ada"))             -- tr
+io.out(mem.s.has("user:eve"))             -- fl
+
+-- ---- EPISODIC MEMORY (mem.e) ----
+-- Append-only event log. Records what happened and when.
+-- Use for: audit trails, history, activity tracking.
+
+mem.e.log(@{event|"login" user|"Ada" method|"password"})
+mem.e.log(@{event|"search" query|"Kode language" results|42})
+mem.e.log(@{event|"click" target|"docs" page|"/tutorial"})
+mem.e.log(@{event|"logout" user|"Ada"})
+
+-- Get last N events:
+lt recent = mem.e.last(2)
+io.out(len(recent))                       -- 2
+-- recent[0] = click event, recent[1] = logout event
+
+-- Get all events:
+lt all = mem.e.all()
+io.out(len(all))                          -- 4
+
+-- Count events:
+io.out(mem.e.len())                       -- 4
+
+-- ---- PROCEDURAL MEMORY (mem.p) ----
+-- Learned functions/skills. Agent teaches itself new abilities.
+-- Use for: caching strategies, learned optimizations.
+
+-- Learn a skill:
+mem.p.learn("greet", |name| -> "Hello, " + name + "!")
+mem.p.learn("double", |x| -> x * 2)
+mem.p.learn("format_currency", |amount| -> "$" + amount)
+
+-- Use a skill:
+lt greeter = mem.p.use("greet")
+io.out(greeter("Ada"))                    -- Hello, Ada!
+
+lt doubler = mem.p.use("double")
+io.out(doubler(21))                       -- 42
+
+-- Check available skills:
+io.out(mem.p.has("greet"))                -- tr
+io.out(mem.p.list())                      -- @[greet double format_currency]
+
+-- ---- MEMORY + AGENTS ----
+-- Each agent can use all 4 memory types.
+
+ag SmartWorker {
+  on "learn" (p) {
+    mem.p.learn(p.skill, p.fn)
+    mem.e.log(@{event|"learned" skill|p.skill})
+    io.out("Learned: " + p.skill)
+  }
+
+  on "work" (p) {
+    mem.w.set("current", p.task)
+    lt skill = mem.p.use(p.skill)
+    lt result = skill(p.input)
+    mem.e.log(@{event|"completed" task|p.task result|result})
+    io.out("Result: " + result)
+  }
+}
+
+-- ---- PRACTICAL PATTERNS ----
+
+-- Pattern: Cache expensive results in semantic memory
+fn cached_fetch(url) {
+  lt cache_key = "cache:" + url
+  if mem.s.has(cache_key) {
+    io.out("Cache hit!")
+    rt mem.s.recall(cache_key)
+  }
+  io.out("Fetching...")
+  lt result = @{data|"fetched from " + url}
+  mem.s.store(cache_key, result)
+  rt result
+}
+
+-- Pattern: Track user activity
+fn track(user, action) {
+  mem.e.log(@{user|user action|action ts|"now"})
+  lt key = "activity:" + user
+  vr count = 0
+  if mem.s.has(key) {
+    count = mem.s.recall(key)
+  }
+  mem.s.store(key, count + 1)
+}
+
+-- ============================================================
+-- SUMMARY:
+--   mem.w   Working memory    set/get/has/delete/keys/clear
+--   mem.s   Semantic memory   store/recall/has/search/keys
+--   mem.e   Episodic memory   log/last/all/len/clear
+--   mem.p   Procedural memory learn/use/has/list
+--   Working = volatile scratchpad
+--   Semantic = persistent facts (searchable)
+--   Episodic = event history (append-only)
+--   Procedural = learned functions/skills
+-- ============================================================

@@ -1,0 +1,90 @@
+-- ============================================================
+-- COOKBOOK: Agent with Memory
+-- ============================================================
+-- Patterns for agents that remember, learn, and improve.
+-- ============================================================
+
+-- ---- AGENT THAT LEARNS ----
+
+ag LearningAgent {
+  on "teach" (p) {
+    mem.p.learn(p.skill, p.fn)
+    mem.e.log(@{event|"learned" skill|p.skill})
+    io.out("Learned skill: " + p.skill)
+  }
+
+  on "do" (p) {
+    if mem.p.has(p.skill) {
+      lt skill_fn = mem.p.use(p.skill)
+      lt result = skill_fn(p.input)
+      mem.e.log(@{event|"used_skill" skill|p.skill input|p.input result|result})
+      io.out("Result: " + result)
+    } el {
+      io.out("I don't know how to: " + p.skill)
+    }
+  }
+
+  on "history" (p) {
+    lt events = mem.e.last(5)
+    io.out("Recent events:")
+    fr e : events {
+      io.out("  - " + e.event)
+    }
+  }
+}
+
+lt agent = sp LearningAgent
+em agent @{type|"teach" skill|"greet" fn||| -> "Hello!"}
+em agent @{type|"teach" skill|"double" fn|||x| -> x * 2}
+em agent @{type|"do" skill|"double" input|21}
+em agent @{type|"history"}
+
+-- ---- AGENT WITH KNOWLEDGE BASE ----
+
+ag KnowledgeAgent {
+  on "learn_fact" (p) {
+    mem.s.store(p.key, p.value)
+    io.out("Stored: " + p.key)
+  }
+
+  on "ask" (p) {
+    lt results = mem.s.search(p.query, 5)
+    if len(results) > 0 {
+      io.out("Found " + len(results) + " results:")
+      fr r : results {
+        io.out("  " + r.key + " = " + r.value)
+      }
+    } el {
+      io.out("No knowledge about: " + p.query)
+    }
+  }
+}
+
+lt kb = sp KnowledgeAgent
+em kb @{type|"learn_fact" key|"capital:france" value|"Paris"}
+em kb @{type|"learn_fact" key|"capital:japan" value|"Tokyo"}
+em kb @{type|"learn_fact" key|"capital:uk" value|"London"}
+em kb @{type|"ask" query|"capital"}
+
+-- ---- AGENT WITH CONTEXT TRACKING ----
+
+ag ContextAgent {
+  on "set_context" (p) {
+    mem.w.set("user", p.user)
+    mem.w.set("session", p.session)
+    io.out("Context set for: " + p.user)
+  }
+
+  on "action" (p) {
+    lt user = mem.w.get("user")
+    mem.e.log(@{user|user action|p.action})
+    io.out(user + " performed: " + p.action)
+  }
+
+  on "summary" (p) {
+    lt user = mem.w.get("user")
+    lt events = mem.e.all()
+    lt user_events = lst.filter(events, |e| -> e.user == user)
+    io.out(user + " has " + len(user_events) + " actions")
+  }
+}

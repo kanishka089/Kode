@@ -1,0 +1,68 @@
+-- ============================================================
+-- REAL-WORLD: URL Shortener
+-- ============================================================
+-- A complete URL shortening service.
+-- Run: kode url-shortener.kd
+-- Then: curl -X POST http://localhost:3000/shorten -d '{"url":"https://example.com"}'
+-- ============================================================
+
+lt store = db.open("sqlite:urls.db")
+store.exec("create table if not exists urls (
+  id text primary key,
+  url text not null,
+  clicks integer default 0,
+  created text
+)")
+
+-- Generate short ID
+fn make_id() -> str.slice(crypto.random_bytes(4), 0, 6)
+
+-- Home page
+fn home_page() {
+  lt count = store.get("select count(*) as n from urls")
+  rt web.html("
+    <html>
+    <head><title>Kode URL Shortener</title>
+    <style>body{font-family:sans-serif;max-width:600px;margin:2rem auto;padding:0 1rem}
+    input{padding:0.5rem;width:70%}button{padding:0.5rem 1rem}</style></head>
+    <body>
+    <h1>Kode URL Shortener</h1>
+    <form method='post' action='/shorten'>
+      <input name='url' placeholder='Enter URL...' required>
+      <button>Shorten</button>
+    </form>
+    <p>" + count.n + " URLs shortened</p>
+    </body></html>")
+}
+
+-- Shorten URL
+fn shorten(req) {
+  lt url = req.body.url
+  lt id = make_id()
+  store.exec("insert into urls (id, url, created) values (?, ?, ?)", @[id url "now"])
+  rt web.json(@{short|"http://localhost:3000/" + id original|url})
+}
+
+-- Redirect
+fn redirect_url(req) {
+  lt id = req.params.id
+  lt row = store.get("select * from urls where id = ?", @[id])
+  if row == nl { rt web.json(@{error|"Not found"}, 404) }
+  store.exec("update urls set clicks = clicks + 1 where id = ?", @[id])
+  rt web.redirect(row.url)
+}
+
+-- Stats
+fn stats(req) {
+  lt urls = store.query("select * from urls order by clicks desc limit 10")
+  rt web.json(urls)
+}
+
+-- Routes
+web.route("GET", "/", |req| -> home_page())
+web.route("POST", "/shorten", |req| -> shorten(req))
+web.route("GET", "/stats", |req| -> stats(req))
+web.route("GET", "/:id", |req| -> redirect_url(req))
+
+io.out("URL Shortener running at http://localhost:3000")
+web.serve(3000)

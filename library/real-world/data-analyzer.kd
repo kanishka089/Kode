@@ -1,0 +1,77 @@
+-- ============================================================
+-- REAL-WORLD: Data Analyzer
+-- ============================================================
+-- Reads CSV data, analyzes it, outputs report.
+-- ============================================================
+
+-- Sample data (normally you'd read from a file)
+lt raw_csv = "name,department,salary,years
+Ada,Engineering,120000,5
+Bob,Marketing,85000,3
+Cal,Engineering,95000,2
+Dee,Sales,78000,7
+Eve,Engineering,140000,8
+Fay,Marketing,92000,4
+Gil,Sales,88000,6
+Hal,Engineering,110000,3"
+
+-- Parse
+lt data = csv.parse(raw_csv)
+io.out("Loaded " + len(data) + " records")
+
+-- ---- ANALYSIS ----
+
+-- Total payroll
+lt total_salary = lst.reduce(data, |acc, r| -> acc + r.salary, 0)
+io.out("Total payroll: $" + total_salary)
+
+-- Average salary
+io.out("Average salary: $" + total_salary / len(data))
+
+-- Highest paid
+lt sorted_by_salary = lst.sort(data)
+-- Manual find max:
+vr highest = data[0]
+fr r : data {
+  if r.salary > highest.salary { highest = r }
+}
+io.out("Highest paid: " + highest.name + " ($" + highest.salary + ")")
+
+-- Count by department
+vr eng_count = 0
+vr mkt_count = 0
+vr sales_count = 0
+fr r : data {
+  if r.department == "Engineering" { eng_count += 1 }
+  if r.department == "Marketing" { mkt_count += 1 }
+  if r.department == "Sales" { sales_count += 1 }
+}
+
+io.out("\n--- Department Breakdown ---")
+io.out("Engineering: " + eng_count + " employees")
+io.out("Marketing: " + mkt_count + " employees")
+io.out("Sales: " + sales_count + " employees")
+
+-- Average tenure
+lt avg_years = lst.reduce(data, |acc, r| -> acc + r.years, 0) / len(data)
+io.out("\nAverage tenure: " + avg_years + " years")
+
+-- Senior employees (5+ years)
+lt seniors = lst.filter(data, |r| -> r.years >= 5)
+io.out("\nSenior employees (5+ years):")
+fr s : seniors {
+  io.out("  " + s.name + " — " + s.department + " (" + s.years + " years)")
+}
+
+-- ---- EXPORT REPORT ----
+lt report = @{
+  total_employees|len(data)
+  total_payroll|total_salary
+  avg_salary|total_salary / len(data)
+  avg_tenure|avg_years
+  departments|@{engineering|eng_count marketing|mkt_count sales|sales_count}
+  highest_paid|@{name|highest.name salary|highest.salary}
+}
+
+io.out("\n--- JSON Report ---")
+io.out(json.to_str(report))

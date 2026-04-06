@@ -1,0 +1,79 @@
+-- ============================================================
+-- COOKBOOK: Crypto & Security
+-- ============================================================
+
+-- ---- HASHING ----
+lt hash = crypto.sha256("hello world")
+io.out(hash)    -- 64-char hex hash
+
+lt hash2 = crypto.sha512("hello")
+io.out(hash2)   -- 128-char hex hash
+
+-- ---- HMAC (for API signatures) ----
+lt signature = crypto.hmac("request-body-data", "my-secret-key")
+io.out(signature)
+
+-- Verify webhook:
+fn verify_webhook(body, signature, secret) {
+  lt expected = crypto.hmac(body, secret)
+  rt expected == signature
+}
+
+-- ---- RANDOM BYTES ----
+lt token = crypto.random_bytes(32)   -- 64-char hex string
+io.out("Token: " + token)
+
+lt short_id = crypto.random_bytes(4) -- 8-char hex
+io.out("ID: " + short_id)
+
+-- ---- UUID ----
+lt id = uuid.v4()
+io.out("UUID: " + id)   -- e.g., 550e8400-e29b-41d4-a716-446655440000
+
+-- ---- ENCODING ----
+-- Base64:
+lt encoded = enc.base64("Hello, World!")
+io.out(encoded)                        -- SGVsbG8sIFdvcmxkIQ==
+io.out(enc.base64_decode(encoded))     -- Hello, World!
+
+-- URL encoding:
+lt url_safe = enc.url_encode("hello world & more")
+io.out(url_safe)                       -- hello%20world%20%26%20more
+io.out(enc.url_decode(url_safe))       -- hello world & more
+
+-- Hex:
+lt hex = enc.hex("AB")
+io.out(hex)                            -- 4142
+io.out(enc.hex_decode(hex))            -- AB
+
+-- ---- REGEX VALIDATION ----
+fn validate_email(email) {
+  rt re.test("^[\\w.]+@[\\w.]+\\.[a-z]{2,}$", email)
+}
+io.out(validate_email("ada@kode.dev"))     -- tr
+io.out(validate_email("not-an-email"))     -- fl
+
+fn validate_password(pw) {
+  if str.len(pw) < 8 { rt fl }
+  if !re.test("[A-Z]", pw) { rt fl }
+  if !re.test("[0-9]", pw) { rt fl }
+  rt tr
+}
+io.out(validate_password("Kode1234"))      -- tr
+io.out(validate_password("weak"))          -- fl
+
+-- ---- HASH PASSWORD (simple) ----
+fn hash_password(password) {
+  lt salt = crypto.random_bytes(16)
+  lt hash = crypto.sha256(salt + password)
+  rt @{salt|salt hash|hash}
+}
+
+fn check_password(password, stored) {
+  lt hash = crypto.sha256(stored.salt + password)
+  rt hash == stored.hash
+}
+
+lt stored = hash_password("mypassword")
+io.out(check_password("mypassword", stored))    -- tr
+io.out(check_password("wrong", stored))         -- fl

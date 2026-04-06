@@ -1,0 +1,125 @@
+-- ============================================================
+-- KODE TUTORIAL: TOON Data Format
+-- ============================================================
+-- TOON = Token-Optimized Object Notation
+-- Uses 30-45% fewer tokens than JSON.
+--
+-- Maps:  @{key|value key2|value2}   (instead of {"key":"value"})
+-- Lists: @[1 2 3]                    (instead of [1, 2, 3])
+-- ============================================================
+
+-- ---- MAPS ----
+-- @{key|value} — pipe separates key from value, space separates entries.
+
+lt user = @{name|"Ada" age|30 role|"developer"}
+io.out(user.name)              -- Ada
+io.out(user.age)               -- 30
+io.out(user.role)              -- developer
+
+-- Nested maps:
+lt config = @{
+  server|@{host|"localhost" port|3000}
+  database|@{type|"sqlite" path|"app.db"}
+  features|@{auth|tr logging|tr}
+}
+io.out(config.server.host)     -- localhost
+io.out(config.database.path)   -- app.db
+io.out(config.features.auth)   -- tr
+
+-- ---- LISTS ----
+-- @[elem1 elem2 elem3] — space-separated, no commas needed.
+
+lt numbers = @[1 2 3 4 5]
+lt names = @["Ada" "Bob" "Cal"]
+lt mixed = @[1 "two" tr nl]
+
+io.out(numbers[0])             -- 1
+io.out(names[2])               -- Cal
+io.out(len(numbers))           -- 5
+
+-- Negative indexing:
+io.out(numbers[-1])            -- 5 (not yet supported — future feature)
+
+-- ---- LISTS OF MAPS ----
+-- The most common data structure for records/rows.
+
+lt users = @[
+  @{name|"Ada" age|30 active|tr}
+  @{name|"Bob" age|25 active|fl}
+  @{name|"Cal" age|35 active|tr}
+]
+
+fr u : users {
+  if u.active {
+    io.out(u.name + " (age " + u.age + ")")
+  }
+}
+-- Output: Ada (age 30), Cal (age 35)
+
+-- ---- MUTATION ----
+-- Maps and lists declared with 'vr' are mutable.
+
+vr person = @{name|"Ada" score|0}
+person.score = 100
+io.out(person.score)           -- 100
+
+vr items = @[10 20 30]
+items[1] = 99
+io.out(items[1])               -- 99
+
+-- ---- MAP OPERATIONS ----
+-- Use the mp module for map operations.
+
+lt data = @{x|1 y|2 z|3}
+io.out(mp.keys(data))          -- @[x y z]
+io.out(mp.values(data))        -- @[1 2 3]
+io.out(mp.has(data, "x"))      -- tr
+io.out(mp.len(data))           -- 3
+
+-- ---- LIST OPERATIONS ----
+-- Use the lst module for list operations.
+
+lt nums = @[5 3 1 4 2]
+io.out(lst.sort(nums))         -- @[1 2 3 4 5]
+io.out(lst.reverse(nums))      -- @[2 4 1 3 5]
+io.out(lst.contains(nums, 4))  -- tr
+io.out(lst.unique(@[1 1 2 2 3]))  -- @[1 2 3]
+
+-- Higher-order functions on lists:
+lt doubled = lst.map(nums, |x| -> x * 2)
+io.out(doubled)                -- @[10 6 2 8 4]
+
+lt evens = lst.filter(nums, |x| -> x % 2 == 0)
+io.out(evens)                  -- @[4 2]
+
+lt sum = lst.reduce(nums, |acc, x| -> acc + x, 0)
+io.out(sum)                    -- 15
+
+-- ---- EMPTY COLLECTIONS ----
+
+lt empty_map = @{}
+lt empty_list = @[]
+io.out(len(empty_map))         -- 0
+io.out(len(empty_list))        -- 0
+
+-- ---- TOON vs JSON TOKEN COMPARISON ----
+-- JSON:  {"name":"Ada","age":30,"role":"dev"}     = ~15 tokens
+-- TOON:  @{name|"Ada" age|30 role|"dev"}          = ~10 tokens
+-- Savings: ~33% fewer tokens
+
+-- JSON:  [1, 2, 3, 4, 5]                          = ~11 tokens
+-- TOON:  @[1 2 3 4 5]                              = ~7 tokens
+-- Savings: ~36% fewer tokens
+
+-- ============================================================
+-- SUMMARY:
+--   @{key|value}        Map (like JSON object)
+--   @[1 2 3]            List (like JSON array)
+--   map.key              Access map property
+--   list[0]             Access list element
+--   map.key = val       Set map property (vr only)
+--   list[i] = val       Set list element (vr only)
+--   @{}                 Empty map
+--   @[]                 Empty list
+--   30-45% fewer tokens than JSON
+-- ============================================================

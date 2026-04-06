@@ -1,0 +1,127 @@
+-- ============================================================
+-- KODE TUTORIAL: Error Handling
+-- ============================================================
+-- Covers: tx/ct/fy (try/catch/finally), tw (throw),
+--         contracts (pre/post), self-healing (@recover)
+-- ============================================================
+
+-- ---- TRY / CATCH / FINALLY ----
+-- tx = try, ct = catch, fy = finally
+
+tx {
+  lt result = 10 / 0
+} ct e {
+  io.out("Error: " + e)       -- Error: Division by zero
+} fy {
+  io.out("Cleanup done")      -- Always runs
+}
+
+-- Catch without variable:
+tx {
+  tw "something broke"
+} ct {
+  io.out("caught an error")
+}
+
+-- ---- THROW (tw) ----
+-- Throw your own errors:
+
+fn validate_age(age) {
+  if age < 0 { tw "Age cannot be negative" }
+  if age > 150 { tw "Age seems unrealistic" }
+  rt age
+}
+
+tx {
+  validate_age(-5)
+} ct e {
+  io.out(e)                    -- Age cannot be negative
+}
+
+-- ---- CONTRACTS (pre/post) ----
+-- Automatic validation on function inputs and outputs.
+-- pre: checked BEFORE the function runs
+-- post: checked AFTER (has access to 'result')
+
+fn withdraw(balance, amount) {
+  pre: amount > 0
+  pre: balance >= amount
+  post: result >= 0
+  rt balance - amount
+}
+
+io.out(withdraw(100, 30))     -- 70
+
+tx {
+  withdraw(100, -5)            -- violates pre: amount > 0
+} ct e {
+  io.out(e)                    -- Contract Precondition failed
+}
+
+tx {
+  withdraw(50, 80)             -- violates pre: balance >= amount
+} ct e {
+  io.out(e)                    -- Contract Precondition failed
+}
+
+-- ---- NESTED ERROR HANDLING ----
+
+fn safe_divide(a, b) {
+  tx {
+    if b == 0 { tw "division by zero" }
+    rt a / b
+  } ct e {
+    io.out("Warning: " + e)
+    rt 0                       -- return safe default
+  }
+}
+
+io.out(safe_divide(10, 3))    -- 3.333...
+io.out(safe_divide(10, 0))    -- Warning: division by zero, then 0
+
+-- ---- ERROR HANDLING PATTERNS ----
+
+-- Pattern 1: Default value on error
+fn parse_number(s) {
+  tx {
+    rt num(s)
+  } ct {
+    rt 0                       -- default if parsing fails
+  }
+}
+
+-- Pattern 2: Error propagation
+fn load_config(path) {
+  tx {
+    lt content = fs.read(path)
+    rt json.parse(content)
+  } ct e {
+    tw "Failed to load config: " + e
+  }
+}
+
+-- Pattern 3: Cleanup with finally
+fn process_file(path) {
+  vr handle = nl
+  tx {
+    handle = fs.read(path)
+    -- process...
+    rt tr
+  } ct e {
+    io.out("Error processing: " + e)
+    rt fl
+  } fy {
+    -- cleanup always runs
+    io.out("Done processing " + path)
+  }
+}
+
+-- ============================================================
+-- SUMMARY:
+--   tx { } ct e { } fy { }    Try/catch/finally
+--   tw "message"                Throw an error
+--   pre: condition              Precondition (checked on entry)
+--   post: condition             Postcondition (checked on exit)
+--   'result' in post:           Reference to return value
+--   Contracts auto-validate every call
+-- ============================================================

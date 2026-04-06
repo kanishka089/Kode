@@ -1,0 +1,173 @@
+-- ============================================================
+-- KODE TUTORIAL: Built-in Testing
+-- ============================================================
+-- Kode has testing built into the language. No external
+-- framework needed. Write tests alongside your code.
+--
+-- Run with: kode test <file.kd>
+-- ============================================================
+
+-- ---- WRITING TESTS ----
+-- Use #test "name" { body } to define a test block.
+-- Tests are SKIPPED during normal execution (kode run).
+-- Tests ONLY run when you use: kode test file.kd
+
+fn add(a, b) { rt a + b }
+fn multiply(a, b) { rt a * b }
+fn factorial(n) { if n <= 1 { rt 1 }; rt n * factorial(n - 1) }
+
+#test "addition" {
+  assert_eq(add(2, 3), 5)
+  assert_eq(add(-1, 1), 0)
+  assert_eq(add(0, 0), 0)
+}
+
+#test "multiplication" {
+  assert_eq(multiply(3, 4), 12)
+  assert_eq(multiply(0, 100), 0)
+  assert_eq(multiply(-2, 3), -6)
+}
+
+#test "factorial" {
+  assert_eq(factorial(0), 1)
+  assert_eq(factorial(1), 1)
+  assert_eq(factorial(5), 120)
+  assert_eq(factorial(10), 3628800)
+}
+
+-- ---- ASSERT FUNCTIONS ----
+
+-- assert(expr) — passes if truthy, fails if falsy
+#test "assert basics" {
+  assert(tr)
+  assert(1)
+  assert("hello")
+  assert(@[1 2 3])
+}
+
+-- assert_eq(a, b) — passes if a equals b
+#test "equality" {
+  assert_eq(1 + 1, 2)
+  assert_eq("hello", "hello")
+  assert_eq(tr, tr)
+}
+
+-- assert_ne(a, b) — passes if a does NOT equal b
+#test "inequality" {
+  assert_ne(1, 2)
+  assert_ne("hello", "world")
+  assert_ne(tr, fl)
+}
+
+-- assert with custom message:
+#test "custom messages" {
+  assert(2 > 1, "2 should be greater than 1")
+  assert_eq(len(@[1 2 3]), 3, "list should have 3 items")
+}
+
+-- ---- TESTING DATA STRUCTURES ----
+
+#test "TOON maps" {
+  lt user = @{name|"Ada" age|30}
+  assert_eq(user.name, "Ada")
+  assert_eq(user.age, 30)
+  assert_eq(len(user), 2)
+}
+
+#test "TOON lists" {
+  lt nums = @[1 2 3 4 5]
+  assert_eq(len(nums), 5)
+  assert_eq(nums[0], 1)
+  assert_eq(nums[4], 5)
+}
+
+-- ---- TESTING STRING OPERATIONS ----
+
+#test "string module" {
+  assert_eq(str.upper("hello"), "HELLO")
+  assert_eq(str.lower("WORLD"), "world")
+  assert_eq(str.trim("  hi  "), "hi")
+  assert(str.contains("hello world", "world"))
+  assert(str.starts("hello", "hel"))
+  assert(str.ends("hello", "llo"))
+  assert_eq(str.replace("aab", "a", "x"), "xxb")
+  assert_eq(str.split("a-b-c", "-"), @["a" "b" "c"])
+}
+
+-- ---- TESTING LIST OPERATIONS ----
+
+#test "list higher-order functions" {
+  lt nums = @[1 2 3 4 5]
+
+  assert_eq(lst.map(nums, |x| -> x * 2), @[2 4 6 8 10])
+  assert_eq(lst.filter(nums, |x| -> x > 3), @[4 5])
+  assert_eq(lst.reduce(nums, |a, x| -> a + x, 0), 15)
+  assert_eq(lst.find(nums, |x| -> x > 3), 4)
+}
+
+#test "list utilities" {
+  assert_eq(lst.sort(@[3 1 2]), @[1 2 3])
+  assert_eq(lst.reverse(@[1 2 3]), @[3 2 1])
+  assert_eq(lst.unique(@[1 1 2 2]), @[1 2])
+  assert_eq(lst.chunk(@[1 2 3 4], 2), @[@[1 2] @[3 4]])
+  assert_eq(lst.join(@["a" "b"], "-"), "a-b")
+}
+
+-- ---- TESTING PIPES ----
+
+#test "pipe operator" {
+  lt result = @[1 2 3 4 5]
+    |> lst.filter(|x| -> x > 2)
+    |> lst.map(|x| -> x * 10)
+  assert_eq(result, @[30 40 50])
+}
+
+-- ---- TESTING ERROR CASES ----
+
+#test "null coalescing" {
+  assert_eq(nl ?? "default", "default")
+  assert_eq(42 ?? 0, 42)
+  assert_eq("" ?? "fallback", "")
+}
+
+#test "closures" {
+  fn make_adder(x) -> |y| -> x + y
+  lt add5 = make_adder(5)
+  assert_eq(add5(3), 8)
+  assert_eq(add5(10), 15)
+}
+
+-- ---- TESTING MEMORY ----
+
+#test "working memory" {
+  mem.w.set("test_key", 42)
+  assert_eq(mem.w.get("test_key"), 42)
+  assert(mem.w.has("test_key"))
+  mem.w.delete("test_key")
+  assert(!mem.w.has("test_key"))
+}
+
+-- ---- RUNNING TESTS ----
+-- From the command line:
+--
+--   $ kode test this_file.kd
+--     ✓ addition
+--     ✓ multiplication
+--     ✓ factorial
+--     ✓ assert basics
+--     ✓ equality
+--     ...
+--   16 tests: 16 passed, 0 failed
+--
+-- Tests are green ✓ on pass, red ✗ on fail with details.
+
+-- ============================================================
+-- SUMMARY:
+--   #test "name" { body }     Define a test
+--   assert(expr)              Pass if truthy
+--   assert_eq(a, b)           Pass if equal
+--   assert_ne(a, b)           Pass if not equal
+--   assert(expr, "message")   Custom failure message
+--   kode test file.kd         Run tests in file
+--   Tests are skipped during normal kode run
+-- ============================================================

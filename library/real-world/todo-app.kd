@@ -1,0 +1,77 @@
+-- ============================================================
+-- REAL-WORLD: Todo App (Full-Stack)
+-- ============================================================
+-- Complete web app: HTML + API + Database
+-- Run: kode todo-app.kd → http://localhost:3000
+-- ============================================================
+
+lt store = db.open("sqlite:todos.db")
+store.exec("create table if not exists todos (
+  id integer primary key autoincrement,
+  title text not null,
+  done integer default 0,
+  created text default (datetime('now'))
+)")
+
+-- ---- HTML PAGE ----
+fn render_page() {
+  lt todos = store.query("select * from todos order by id desc")
+  lt done_count = len(lst.filter(todos, |t| -> t.done == 1))
+  lt total = len(todos)
+
+  vr items_html = ""
+  fr t : todos {
+    vr checked = ""
+    if t.done == 1 { checked = " checked" }
+    vr style = ""
+    if t.done == 1 { style = " style='text-decoration:line-through;opacity:0.5'" }
+    items_html = items_html + "<li" + style + "><label><input type='checkbox'" + checked + " onchange=\"fetch('/toggle/" + t.id + "',{method:'POST'}).then(()=>location.reload())\"> " + t.title + "</label> <a href='/delete/" + t.id + "' style='color:red;text-decoration:none'>x</a></li>"
+  }
+
+  rt web.html("<!DOCTYPE html><html><head><title>Kode Todos</title>
+<style>
+body{font-family:-apple-system,sans-serif;max-width:600px;margin:2rem auto;padding:0 1rem;background:#1a1a2e;color:#e0e0e0}
+h1{color:#00d4ff}
+input[type=text]{padding:0.7rem;width:70%;background:#16213e;border:1px solid #0f3460;color:#fff;border-radius:4px}
+button{padding:0.7rem 1.5rem;background:#00d4ff;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:bold}
+button:hover{background:#00b4d8}
+ul{list-style:none;padding:0}
+li{padding:0.5rem;margin:0.3rem 0;background:#16213e;border-radius:4px}
+a{margin-left:1rem}
+.stats{color:#888;font-size:0.9rem}
+</style></head><body>
+<h1>Kode Todo App</h1>
+<form method='post' action='/add'>
+  <input type='text' name='title' placeholder='What needs to be done?' required autofocus>
+  <button>Add</button>
+</form>
+<ul>" + items_html + "</ul>
+<p class='stats'>" + done_count + "/" + total + " completed</p>
+<p class='stats'>Powered by Kode — 48% fewer tokens than Python</p>
+</body></html>")
+}
+
+-- ---- ROUTES ----
+web.route("GET", "/", |req| -> render_page())
+
+web.route("GET", "/api/todos", |req| {
+  rt web.json(store.query("select * from todos order by id desc"))
+})
+
+web.route("POST", "/add", |req| {
+  store.exec("insert into todos (title) values (?)", @[req.body.title])
+  rt web.redirect("/")
+})
+
+web.route("POST", "/toggle/:id", |req| {
+  store.exec("update todos set done = case when done=0 then 1 else 0 end where id = ?", @[req.params.id])
+  rt web.json(@{ok|tr})
+})
+
+web.route("GET", "/delete/:id", |req| {
+  store.exec("delete from todos where id = ?", @[req.params.id])
+  rt web.redirect("/")
+})
+
+io.out("Todo App running at http://localhost:3000")
+web.serve(3000)

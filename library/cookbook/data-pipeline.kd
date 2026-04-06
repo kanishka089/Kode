@@ -1,0 +1,79 @@
+-- ============================================================
+-- COOKBOOK: Data Processing Pipelines
+-- ============================================================
+
+-- ---- SIMPLE TRANSFORM PIPELINE ----
+lt raw = @[
+  @{name|"Ada Lovelace" age|30 score|95}
+  @{name|"Bob Smith" age|17 score|82}
+  @{name|"Cal Jones" age|25 score|71}
+  @{name|"Dee Brown" age|22 score|88}
+  @{name|"Eve White" age|16 score|93}
+]
+
+lt result = raw
+  |> lst.filter(|r| -> r.age >= 18)          -- adults only
+  |> lst.filter(|r| -> r.score >= 80)        -- high scorers
+  |> lst.map(|r| -> @{name|r.name grade|"A"})
+  |> lst.sort()
+io.out(result)
+
+-- ---- ETL: Extract, Transform, Load ----
+-- Extract
+lt csv_data = "name,value\nwidget,100\ngadget,200\ndoodad,50"
+lt extracted = csv.parse(csv_data)
+
+-- Transform
+lt transformed = extracted
+  |> lst.map(|row| -> @{
+    name|str.upper(row.name)
+    value|row.value
+    tax|row.value * 0.1
+    total|row.value * 1.1
+  })
+  |> lst.filter(|row| -> row.total > 60)
+
+-- Load
+io.out(json.to_str(transformed))
+
+-- ---- STREAM PROCESSING ----
+lt stream_result = stream.from(@[1 2 3 4 5 6 7 8 9 10 11 12])
+stream_result.filter(|x| -> x % 3 == 0)   -- multiples of 3
+stream_result.map(|x| -> x * x)           -- square them
+stream_result.batch(2)                     -- group in pairs
+io.out(stream_result.collect())            -- @[@[9 36] @[81 144]]
+
+-- ---- AGGREGATION ----
+lt sales = @[
+  @{region|"North" amount|1000}
+  @{region|"South" amount|2000}
+  @{region|"North" amount|1500}
+  @{region|"East" amount|800}
+  @{region|"South" amount|1200}
+]
+
+lt total = lst.reduce(sales, |acc, s| -> acc + s.amount, 0)
+io.out("Total sales: $" + total)
+
+-- Count by region (manual group-by):
+vr north = 0
+vr south = 0
+fr s : sales {
+  if s.region == "North" { north += s.amount }
+  if s.region == "South" { south += s.amount }
+}
+io.out("North: $" + north)    -- $2500
+io.out("South: $" + south)    -- $3200
+
+-- ---- TEXT PROCESSING ----
+lt text = "The quick brown fox jumps over the lazy dog. The dog barked."
+
+lt words = str.split(text, " ")
+io.out("Word count: " + len(words))
+
+lt unique_words = lst.unique(lst.map(words, |w| -> str.lower(w)))
+io.out("Unique words: " + len(unique_words))
+
+-- Find words containing 'o':
+lt with_o = lst.filter(words, |w| -> str.contains(str.lower(w), "o"))
+io.out("Words with 'o': " + with_o)

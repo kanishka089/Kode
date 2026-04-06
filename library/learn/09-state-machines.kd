@@ -1,0 +1,111 @@
+-- ============================================================
+-- KODE TUTORIAL: State Machines
+-- ============================================================
+-- State machines model workflows with defined states and
+-- transitions. Perfect for: order processing, game logic,
+-- document workflows, agent behavior.
+-- ============================================================
+
+-- ---- DEFINING A STATE MACHINE ----
+-- Use 'st' to declare states and transitions.
+
+st TrafficLight {
+  "red"    { on "next" -> "green" }
+  "green"  { on "next" -> "yellow" }
+  "yellow" { on "next" -> "red" }
+}
+
+-- Create an instance:
+lt light = TrafficLight.new()
+io.out(light.state)            -- red
+
+-- Trigger transitions:
+light.send("next")
+io.out(light.state)            -- green
+light.send("next")
+io.out(light.state)            -- yellow
+light.send("next")
+io.out(light.state)            -- red (cycled back)
+
+-- ---- MULTIPLE TRANSITIONS PER STATE ----
+
+st OrderFlow {
+  "pending"   { on "pay" -> "paid" on "cancel" -> "cancelled" }
+  "paid"      { on "ship" -> "shipped" on "refund" -> "refunded" }
+  "shipped"   { on "deliver" -> "delivered" on "return" -> "returned" }
+  "delivered" {}
+  "cancelled" {}
+  "refunded"  {}
+  "returned"  { on "refund" -> "refunded" }
+}
+
+lt order = OrderFlow.new()
+io.out(order.state)            -- pending
+order.send("pay")
+io.out(order.state)            -- paid
+order.send("ship")
+io.out(order.state)            -- shipped
+order.send("deliver")
+io.out(order.state)            -- delivered
+
+-- ---- ERROR RECOVERY ----
+
+st Pipeline {
+  "ready"   { on "run" -> "running" }
+  "running" { on "done" -> "complete" on "fail" -> "error" }
+  "error"   { on "retry" -> "running" on "abort" -> "ready" }
+  "complete" {}
+}
+
+lt p = Pipeline.new()
+p.send("run")
+p.send("fail")
+io.out(p.state)                -- error
+p.send("retry")
+io.out(p.state)                -- running
+p.send("done")
+io.out(p.state)                -- complete
+
+-- ---- INVALID TRANSITIONS ----
+-- Sending an event that has no transition from the current state throws an error.
+
+st Door {
+  "closed" { on "open" -> "open" }
+  "open"   { on "close" -> "closed" }
+}
+
+lt door = Door.new()
+tx {
+  door.send("close")          -- ERROR: can't close a closed door
+} ct e {
+  io.out("Caught: " + e)
+}
+
+-- ---- STATE MACHINE + AGENT ----
+-- Agents can use state machines to track their workflow.
+
+ag TaskAgent {
+  vr flow = Pipeline.new()
+
+  on "action" (p) {
+    lt prev = flow.state
+    flow.send(p.event)
+    io.out(prev + " -> " + flow.state)
+    mem.e.log(@{from|prev to|flow.state event|p.event})
+  }
+}
+
+lt agent = sp TaskAgent
+em agent @{type|"action" event|"run"}
+em agent @{type|"action" event|"done"}
+
+-- ============================================================
+-- SUMMARY:
+--   st Name { "state" { on "event" -> "target" } }
+--   lt instance = Name.new()
+--   instance.state              Current state
+--   instance.send("event")     Trigger transition
+--   Invalid transitions throw errors
+--   First state in definition = initial state
+--   Combine with agents for stateful workflows
+-- ============================================================

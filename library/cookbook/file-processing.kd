@@ -1,0 +1,61 @@
+-- ============================================================
+-- COOKBOOK: File Processing
+-- ============================================================
+
+-- ---- READ FILE ----
+lt content = fs.read("data.txt")
+io.out(content)
+
+-- ---- WRITE FILE ----
+fs.write("output.txt", "Hello from Kode!")
+
+-- ---- CHECK IF EXISTS ----
+if fs.exists("config.json") {
+  io.out("Config found")
+} el {
+  io.out("No config, using defaults")
+}
+
+-- ---- LIST DIRECTORY ----
+lt files = fs.list(".")
+fr f : files {
+  io.out(f)
+}
+
+-- ---- FILE INFO ----
+lt info = fs.stat("package.json")
+io.out("Size: " + info.size + " bytes")
+io.out("Is file: " + info.is_file)
+io.out("Is dir: " + info.is_dir)
+
+-- ---- CREATE DIRECTORY ----
+fs.mkdir("output/reports")
+
+-- ---- PROCESS CSV FILE ----
+lt csv_data = fs.read("data.csv")
+lt rows = csv.parse(csv_data)
+fr row : rows {
+  io.out(row.name + ": " + row.score)
+}
+
+-- ---- READ JSON CONFIG ----
+lt config = json.parse(fs.read("config.json"))
+io.out(config.database.host)
+
+-- ---- WRITE JSON OUTPUT ----
+lt results = @{processed|100 errors|0 timestamp|"2026-04-06"}
+fs.write("results.json", json.to_str(results))
+
+-- ---- PROCESS ALL FILES IN DIRECTORY ----
+lt all_files = fs.list("./data")
+lt kd_files = lst.filter(all_files, |f| -> str.ends(f, ".kd"))
+fr f : kd_files {
+  io.out("Processing: " + f)
+  lt content = fs.read("./data/" + f)
+  -- process content...
+}
+
+-- ---- LOAD ENVIRONMENT ----
+env.load(".env")
+lt api_key = env.get("API_KEY", "no-key")
+io.out("Using API key: " + str.slice(api_key, 0, 4) + "...")

@@ -1,0 +1,65 @@
+-- ============================================================
+-- COOKBOOK: Web Server
+-- ============================================================
+-- How to build HTTP servers in Kode.
+-- ============================================================
+
+-- ---- MINIMAL SERVER ----
+-- web.route("METHOD", "/path", handler)
+-- web.serve(port)
+
+web.route("GET", "/", |req| -> web.html("<h1>Hello Kode!</h1>"))
+web.serve(3000)
+-- Visit http://localhost:3000
+
+-- ---- JSON API ----
+web.route("GET", "/api/status", |req| -> web.json(@{ok|tr version|"1.0"}))
+web.route("GET", "/api/time", |req| -> web.json(@{time|"2026-04-06"}))
+web.serve(3000)
+
+-- ---- POST WITH BODY ----
+web.route("POST", "/api/echo", |req| {
+  io.out("Received: " + req.body)
+  rt web.json(@{received|req.body})
+})
+
+-- ---- URL PARAMETERS ----
+web.route("GET", "/users/:id", |req| {
+  lt user_id = req.params.id
+  rt web.json(@{id|user_id name|"User " + user_id})
+})
+
+-- ---- QUERY PARAMETERS ----
+web.route("GET", "/search", |req| {
+  lt query = req.query.q
+  lt page = req.query.page
+  rt web.json(@{query|query page|page})
+})
+-- GET /search?q=kode&page=1
+
+-- ---- REDIRECT ----
+web.route("GET", "/old-page", |req| -> web.redirect("/new-page"))
+
+-- ---- HTML WITH DYNAMIC DATA ----
+fn user_page(name, age) {
+  rt web.html("<html><body><h1>${name}</h1><p>Age: ${age}</p></body></html>")
+}
+web.route("GET", "/profile/:name", |req| -> user_page(req.params.name, 30))
+
+-- ---- COMPLETE EXAMPLE ----
+lt items = @["Apple" "Banana" "Cherry"]
+
+web.route("GET", "/", |req| {
+  vr html_items = ""
+  fr item : items { html_items = html_items + "<li>" + item + "</li>" }
+  rt web.html("<html><body><h1>Items</h1><ul>" + html_items + "</ul></body></html>")
+})
+
+web.route("GET", "/api/items", |req| -> web.json(items))
+
+web.route("POST", "/api/items", |req| {
+  -- items would need to be mutable for this to work
+  rt web.json(@{ok|tr})
+})
+
+web.serve(3000)

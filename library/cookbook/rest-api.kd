@@ -1,0 +1,55 @@
+-- ============================================================
+-- COOKBOOK: REST API with Database
+-- ============================================================
+-- Complete CRUD API pattern.
+-- ============================================================
+
+lt db = db.open("sqlite:api.db")
+
+-- Setup
+db.exec("create table if not exists users (id integer primary key autoincrement, name text not null, email text, age integer)")
+
+-- CREATE
+web.route("POST", "/api/users", |req| {
+  db.exec("insert into users (name, email, age) values (?, ?, ?)",
+    @[req.body.name req.body.email req.body.age])
+  rt web.json(@{ok|tr}, 201)
+})
+
+-- READ ALL
+web.route("GET", "/api/users", |req| {
+  lt users = db.query("select * from users")
+  rt web.json(users)
+})
+
+-- READ ONE
+web.route("GET", "/api/users/:id", |req| {
+  lt user = db.get("select * from users where id = ?", @[req.params.id])
+  if user == nl { rt web.json(@{error|"Not found"}, 404) }
+  rt web.json(user)
+})
+
+-- UPDATE
+web.route("PUT", "/api/users/:id", |req| {
+  db.exec("update users set name = ?, email = ?, age = ? where id = ?",
+    @[req.body.name req.body.email req.body.age req.params.id])
+  rt web.json(@{ok|tr})
+})
+
+-- DELETE
+web.route("DELETE", "/api/users/:id", |req| {
+  db.exec("delete from users where id = ?", @[req.params.id])
+  rt web.json(@{ok|tr})
+})
+
+io.out("REST API running at http://localhost:3000")
+web.serve(3000)
+
+-- ---- USAGE ----
+-- curl -X POST http://localhost:3000/api/users \
+--   -H "Content-Type: application/json" \
+--   -d '{"name":"Ada","email":"ada@kode.dev","age":30}'
+--
+-- curl http://localhost:3000/api/users
+-- curl http://localhost:3000/api/users/1
+-- curl -X DELETE http://localhost:3000/api/users/1

@@ -1,0 +1,141 @@
+-- ============================================================
+-- REAL-WORLD: AI Agent Team
+-- ============================================================
+-- A team of agents that collaborate on research tasks.
+-- Demonstrates: multi-agent, state machines, memory, pipelines.
+-- ============================================================
+
+-- ---- STATE MACHINE FOR TASK TRACKING ----
+st TaskState {
+  "pending"    { on "assign" -> "assigned" }
+  "assigned"   { on "start" -> "in_progress" }
+  "in_progress" { on "complete" -> "review" on "block" -> "blocked" }
+  "blocked"    { on "unblock" -> "in_progress" }
+  "review"     { on "approve" -> "done" on "reject" -> "in_progress" }
+  "done"       {}
+}
+
+-- ---- RESEARCH AGENT ----
+-- Searches for information and passes to writer.
+ag Researcher {
+  vr tasks_done = 0
+
+  on "start" () {
+    io.out("[Researcher] Ready to research")
+  }
+
+  on "research" (p) {
+    tasks_done += 1
+    io.out("[Researcher] Researching: " + p.topic)
+
+    -- Simulate research results
+    lt findings = @[
+      "Key finding 1 about " + p.topic
+      "Key finding 2 about " + p.topic
+      "Related: " + p.topic + " trends 2026"
+    ]
+
+    -- Store in semantic memory
+    mem.s.store("research:" + p.topic, findings)
+    mem.e.log(@{event|"researched" topic|p.topic findings|len(findings)})
+
+    -- Pass to writer
+    em "Writer" @{type|"write" topic|p.topic findings|findings task_id|p.task_id}
+  }
+}
+
+-- ---- WRITER AGENT ----
+-- Takes research and writes a summary.
+ag Writer {
+  on "start" () {
+    io.out("[Writer] Ready to write")
+  }
+
+  on "write" (p) {
+    io.out("[Writer] Writing about: " + p.topic)
+
+    -- Build article from findings
+    vr article = "# " + p.topic + "\n\n"
+    fr finding : p.findings {
+      article = article + "- " + finding + "\n"
+    }
+    article = article + "\n## Conclusion\nThis covers " + p.topic + "."
+
+    mem.e.log(@{event|"wrote" topic|p.topic length|str.len(article)})
+
+    -- Pass to reviewer
+    em "Reviewer" @{type|"review" topic|p.topic article|article task_id|p.task_id}
+  }
+}
+
+-- ---- REVIEWER AGENT ----
+-- Reviews articles and approves/rejects.
+ag Reviewer {
+  vr approved = 0
+  vr rejected = 0
+
+  on "start" () {
+    io.out("[Reviewer] Ready to review")
+  }
+
+  on "review" (p) {
+    io.out("[Reviewer] Reviewing: " + p.topic)
+
+    -- Simple quality check
+    lt quality = str.len(p.article) > 50
+    if quality {
+      approved += 1
+      io.out("[Reviewer] APPROVED (" + approved + " total)")
+      mem.e.log(@{event|"approved" topic|p.topic})
+
+      -- Notify coordinator
+      em "Coordinator" @{type|"task_done" task_id|p.task_id status|"approved"}
+    } el {
+      rejected += 1
+      io.out("[Reviewer] REJECTED — too short")
+      mem.e.log(@{event|"rejected" topic|p.topic})
+    }
+  }
+}
+
+-- ---- COORDINATOR AGENT ----
+-- Manages the overall workflow.
+ag Coordinator {
+  vr total_tasks = 0
+  vr completed = 0
+
+  on "start" () {
+    io.out("[Coordinator] Team assembled!")
+  }
+
+  on "assign" (p) {
+    total_tasks += 1
+    lt task_id = "task-" + total_tasks
+    io.out("[Coordinator] Assigning task " + task_id + ": " + p.topic)
+    em "Researcher" @{type|"research" topic|p.topic task_id|task_id}
+  }
+
+  on "task_done" (p) {
+    completed += 1
+    io.out("[Coordinator] Task " + p.task_id + " completed (" + completed + "/" + total_tasks + ")")
+    if completed == total_tasks {
+      io.out("[Coordinator] ALL TASKS COMPLETE!")
+      io.out("[Coordinator] Event log: " + mem.e.len() + " events recorded")
+    }
+  }
+}
+
+-- ---- DEPLOY THE TEAM ----
+lt coord = sp Coordinator
+lt researcher = sp Researcher
+lt writer = sp Writer
+lt reviewer = sp Reviewer
+
+-- Assign tasks
+em coord @{type|"assign" topic|"AI Agent Languages"}
+em coord @{type|"assign" topic|"Token Efficiency"}
+em coord @{type|"assign" topic|"Multi-Agent Systems"}
+
+io.out("\n--- Final Memory State ---")
+io.out("Semantic keys: " + mem.s.keys())
+io.out("Events logged: " + mem.e.len())

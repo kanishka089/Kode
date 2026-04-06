@@ -1,0 +1,141 @@
+-- ============================================================
+-- COOKBOOK: Multi-Agent Systems
+-- ============================================================
+-- Patterns for building agent teams that collaborate.
+-- ============================================================
+
+-- ---- PATTERN 1: Pipeline (A → B → C) ----
+-- Each agent processes and passes to the next.
+
+ag Fetcher {
+  on "fetch" (p) {
+    io.out("[Fetcher] Getting: " + p.url)
+    lt data = "data from " + p.url
+    em "Transformer" @{type|"transform" raw|data}
+  }
+}
+
+ag Transformer {
+  on "transform" (p) {
+    io.out("[Transformer] Processing: " + p.raw)
+    lt cleaned = str.upper(p.raw)
+    em "Loader" @{type|"load" data|cleaned}
+  }
+}
+
+ag Loader {
+  on "load" (p) {
+    io.out("[Loader] Storing: " + p.data)
+    mem.s.store("result", p.data)
+  }
+}
+
+lt f = sp Fetcher
+lt t = sp Transformer
+lt l = sp Loader
+em f @{type|"fetch" url|"https://api.example.com/data"}
+
+-- ---- PATTERN 2: Fan-Out / Fan-In ----
+-- One coordinator sends to many workers, collects results.
+
+ag Coordinator {
+  vr results = @[]
+  vr expected = 0
+
+  on "distribute" (p) {
+    lt tasks = p.tasks
+    expected = len(tasks)
+    fr i, task : tasks {
+      em "Worker" @{type|"work" task|task id|i}
+    }
+  }
+
+  on "result" (p) {
+    results = results + @[p.value]
+    io.out("[Coordinator] Got result " + len(results) + "/" + expected)
+    if len(results) == expected {
+      io.out("[Coordinator] All done! Results: " + results)
+    }
+  }
+}
+
+ag Worker {
+  on "work" (p) {
+    io.out("[Worker] Processing task: " + p.task)
+    lt result = str.upper(p.task)
+    em "Coordinator" @{type|"result" value|result id|p.id}
+  }
+}
+
+lt coord = sp Coordinator
+lt worker = sp Worker
+em coord @{type|"distribute" tasks|@["task-a" "task-b" "task-c"]}
+
+-- ---- PATTERN 3: Supervisor (Error Recovery) ----
+-- An agent that monitors others and handles failures.
+
+ag ReliableWorker {
+  on "process" (p) {
+    io.out("[Worker] Processing: " + p.item)
+    -- Simulate occasional failure
+    if p.item == "bad" {
+      tw "Failed to process: " + p.item
+    }
+    io.out("[Worker] Done: " + p.item)
+  }
+
+  on "error" (err) {
+    io.out("[Worker] ERROR: " + err)
+    mem.e.log(@{event|"error" error|err})
+  }
+}
+
+lt rw = sp ReliableWorker
+em rw @{type|"process" item|"good"}
+em rw @{type|"process" item|"bad"}
+em rw @{type|"process" item|"also-good"}
+
+-- ---- PATTERN 4: Stateful Agent with State Machine ----
+
+st ConversationState {
+  "greeting"   { on "greet" -> "asked_name" }
+  "asked_name" { on "name" -> "asked_topic" }
+  "asked_topic" { on "topic" -> "discussing" }
+  "discussing"  { on "done" -> "farewell" }
+  "farewell"    {}
+}
+
+ag ChatBot {
+  vr flow = ConversationState.new()
+  vr user_name = ""
+
+  on "message" (p) {
+    mt flow.state {
+      "greeting" -> {
+        io.out("Bot: Hi! What's your name?")
+        flow.send("greet")
+      }
+      "asked_name" -> {
+        user_name = p.text
+        io.out("Bot: Nice to meet you, " + user_name + "! What topic?")
+        flow.send("name")
+      }
+      "asked_topic" -> {
+        io.out("Bot: Let's talk about " + p.text + "!")
+        flow.send("topic")
+      }
+      "discussing" -> {
+        io.out("Bot: Interesting point about " + p.text)
+      }
+      _ -> {
+        io.out("Bot: Goodbye!")
+      }
+    }
+  }
+}
+
+lt bot = sp ChatBot
+em bot @{type|"message" text|"hello"}
+em bot @{type|"message" text|"Ada"}
+em bot @{type|"message" text|"AI agents"}
+em bot @{type|"message" text|"they're amazing"}

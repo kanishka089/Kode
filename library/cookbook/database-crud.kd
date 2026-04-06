@@ -1,0 +1,48 @@
+-- ============================================================
+-- COOKBOOK: Database Operations (SQLite)
+-- ============================================================
+
+-- ---- CONNECT ----
+lt store = db.open("sqlite:myapp.db")     -- file-based
+-- lt store = db.open(":memory:")          -- in-memory (for testing)
+
+-- ---- CREATE TABLE ----
+store.exec("create table if not exists products (
+  id integer primary key autoincrement,
+  name text not null,
+  price real not null,
+  stock integer default 0,
+  active integer default 1
+)")
+
+-- ---- INSERT ----
+store.exec("insert into products (name, price, stock) values (?, ?, ?)", @["Widget" 9.99 100])
+store.exec("insert into products (name, price, stock) values (?, ?, ?)", @["Gadget" 24.99 50])
+store.exec("insert into products (name, price, stock) values (?, ?, ?)", @["Doohickey" 4.99 200])
+
+-- ---- QUERY ALL ----
+lt products = store.query("select * from products")
+fr p : products {
+  io.out(p.name + " — $" + p.price + " (" + p.stock + " in stock)")
+}
+
+-- ---- QUERY WITH CONDITIONS ----
+lt cheap = store.query("select * from products where price < ?", @[10])
+io.out("Cheap products: " + len(cheap))
+
+-- ---- GET SINGLE ROW ----
+lt widget = store.get("select * from products where name = ?", @["Widget"])
+io.out("Widget price: $" + widget.price)
+
+-- ---- UPDATE ----
+store.exec("update products set price = ? where name = ?", @[7.99 "Widget"])
+
+-- ---- DELETE ----
+store.exec("delete from products where stock = 0")
+
+-- ---- AGGREGATE QUERIES ----
+lt total = store.get("select count(*) as count, sum(price) as total from products")
+io.out("Products: " + total.count + ", Total value: $" + total.total)
+
+-- ---- CLEANUP ----
+store.close()

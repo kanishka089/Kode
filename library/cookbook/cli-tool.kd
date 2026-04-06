@@ -1,0 +1,70 @@
+-- ============================================================
+-- COOKBOOK: Building CLI Tools
+-- ============================================================
+
+-- ---- BASIC CLI ----
+io.out("Hello from Kode CLI!")
+io.out("Platform: " + proc.platform)
+io.out("CWD: " + proc.cwd())
+
+-- ---- READ COMMAND-LINE ARGUMENTS ----
+lt args = proc.args
+if len(args) > 0 {
+  io.out("Args: " + args)
+} el {
+  io.out("No arguments provided")
+}
+
+-- ---- ENVIRONMENT VARIABLES ----
+lt api_key = env.get("API_KEY", "not-set")
+lt debug = env.get("DEBUG", "false")
+io.out("API Key: " + api_key)
+io.out("Debug: " + debug)
+
+-- ---- EXECUTE SHELL COMMANDS ----
+lt files = proc.exec("ls -la")
+io.out(files)
+
+lt git_branch = proc.exec("git branch --show-current")
+io.out("Branch: " + git_branch)
+
+-- ---- FILE COUNTER TOOL ----
+-- Count files by extension in current directory
+
+lt all_files = fs.list(".")
+vr counts = @{}
+fr f : all_files {
+  lt parts = str.split(f, ".")
+  if len(parts) > 1 {
+    lt ext = parts[len(parts) - 1]
+    -- simplified counting
+    io.out(f + " -> ." + ext)
+  }
+}
+
+-- ---- JSON FORMATTER TOOL ----
+-- Read JSON, pretty-print it
+
+fn format_json(path) {
+  if !fs.exists(path) {
+    io.out("File not found: " + path)
+    rt
+  }
+  lt content = fs.read(path)
+  lt parsed = json.parse(content)
+  lt pretty = json.to_str(parsed)
+  io.out(pretty)
+}
+
+-- ---- LOG VIEWER ----
+-- Structured logging
+
+log.level("debug")
+log.debug("Starting up...")
+log.info("Processing items")
+log.warn("Low memory")
+log.error("Connection failed")
+
+-- ---- EXIT WITH CODE ----
+-- proc.exit(0)   -- success
+-- proc.exit(1)   -- failure

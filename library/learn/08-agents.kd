@@ -1,0 +1,167 @@
+-- ============================================================
+-- KODE TUTORIAL: Agents
+-- ============================================================
+-- Agents are the core of Kode. They are independent units with:
+--   - Their own state (vr inside ag)
+--   - Event handlers (on "event")
+--   - Message passing (em)
+--   - Lifecycle (start, stop, error)
+-- ============================================================
+
+-- ---- DEFINING AN AGENT ----
+-- Use 'ag' to define an agent blueprint.
+
+ag Greeter {
+  on "start" () {
+    io.out("Greeter is ready!")
+  }
+
+  on "greet" (p) {
+    io.out("Hello, " + p.name + "!")
+  }
+}
+
+-- ---- SPAWNING AN AGENT ----
+-- Use 'sp' to create an instance. This triggers the "start" handler.
+
+lt g = sp Greeter              -- Output: Greeter is ready!
+
+-- ---- SENDING MESSAGES ----
+-- Use 'em' (emit) to send messages. The payload is a TOON map.
+-- The 'type' field determines which handler receives it.
+
+em g @{type|"greet" name|"Ada"}    -- Output: Hello, Ada!
+em g @{type|"greet" name|"Bob"}    -- Output: Hello, Bob!
+
+-- ---- AGENT STATE ----
+-- Agents can have mutable state that persists across messages.
+
+ag Counter {
+  vr count = 0
+
+  on "inc" (p) {
+    count += 1
+    io.out("Count: " + count)
+  }
+
+  on "get" (p) {
+    io.out("Current: " + count)
+  }
+}
+
+lt c = sp Counter
+em c @{type|"inc"}             -- Count: 1
+em c @{type|"inc"}             -- Count: 2
+em c @{type|"inc"}             -- Count: 3
+em c @{type|"get"}             -- Current: 3
+
+-- ---- AGENT FUNCTIONS ----
+-- Agents can define internal helper functions.
+
+ag Calculator {
+  fn compute(op, a, b) {
+    mt op {
+      "add" -> { rt a + b }
+      "mul" -> { rt a * b }
+      _ -> { rt 0 }
+    }
+  }
+
+  on "calc" (p) {
+    lt result = compute(p.op, p.a, p.b)
+    io.out(p.op + "(" + p.a + ", " + p.b + ") = " + result)
+  }
+}
+
+lt calc = sp Calculator
+em calc @{type|"calc" op|"add" a|10 b|20}   -- add(10, 20) = 30
+em calc @{type|"calc" op|"mul" a|6 b|7}     -- mul(6, 7) = 42
+
+-- ---- AGENT-TO-AGENT COMMUNICATION ----
+-- Agents can send messages to other agents by name.
+
+ag Producer {
+  on "produce" (p) {
+    io.out("Producing: " + p.item)
+    em "Consumer" @{type|"consume" item|p.item}
+  }
+}
+
+ag Consumer {
+  on "consume" (p) {
+    io.out("Consumed: " + p.item)
+  }
+}
+
+lt prod = sp Producer
+lt cons = sp Consumer
+em prod @{type|"produce" item|"Widget"}
+-- Output: Producing: Widget
+-- Output: Consumed: Widget
+
+-- ---- MULTI-AGENT PIPELINE ----
+-- Chain agents together: A -> B -> C
+
+ag Fetcher {
+  on "fetch" (p) {
+    io.out("Fetching: " + p.url)
+    em "Parser" @{type|"parse" data|"raw data from " + p.url}
+  }
+}
+
+ag Parser {
+  on "parse" (p) {
+    io.out("Parsing: " + p.data)
+    em "Storer" @{type|"store" result|"parsed: " + p.data}
+  }
+}
+
+ag Storer {
+  on "store" (p) {
+    io.out("Stored: " + p.result)
+    mem.w.set("last_result", p.result)
+  }
+}
+
+lt f = sp Fetcher
+lt p = sp Parser
+lt s = sp Storer
+em f @{type|"fetch" url|"https://api.example.com"}
+-- Output: Fetching → Parsing → Stored (3-agent pipeline)
+
+-- ---- ERROR HANDLING IN AGENTS ----
+-- Define an "error" handler to catch agent errors.
+
+ag Risky {
+  on "do_thing" (p) {
+    tw "something went wrong"
+  }
+
+  on "error" (err) {
+    io.out("Agent caught error: " + err)
+  }
+}
+
+lt r = sp Risky
+em r @{type|"do_thing"}        -- Agent caught error: ...
+
+-- ---- AGENT REFERENCE ----
+-- sp returns a map with the agent's id and name.
+
+lt ref = sp Greeter
+io.out(ref.name)               -- Greeter
+io.out(ref.id)                 -- agent_N (unique ID)
+
+-- ============================================================
+-- SUMMARY:
+--   ag Name { }               Define an agent
+--   sp Name                   Spawn (create instance)
+--   em target @{type|"event"} Send message
+--   on "event" (payload) { }  Handle messages
+--   on "start" () { }         Lifecycle: agent started
+--   on "error" (err) { }      Lifecycle: unhandled error
+--   vr inside ag              Agent-scoped state
+--   fn inside ag              Agent-scoped functions
+--   em "AgentName" @{...}     Send to agent by name
+--   Agents process messages in order (FIFO)
+-- ============================================================
