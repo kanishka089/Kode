@@ -1,23 +1,39 @@
 {
   "name": "kode-lang",
   "version": "0.1.0",
-  "description": "Kode — A token-efficient, full-stack programming language for AI agents",
+  "description": "Kode — A token-efficient, full-stack programming language for AI agents. 48% fewer tokens than Python.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "kode": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "examples",
+    "library",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm --target node20 --clean",
+    "prepublishOnly": "npm run build",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kanishka089/Kode"
+  },
+  "homepage": "https://github.com/kanishka089/Kode",
   "keywords": [
     "programming-language",
     "ai-agents",
     "interpreter",
-    "token-efficient"
+    "token-efficient",
+    "kode",
+    "language",
+    "agents",
+    "full-stack"
   ],
   "license": "MIT",
   "devDependencies": {
