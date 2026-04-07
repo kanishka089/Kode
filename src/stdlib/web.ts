@@ -84,11 +84,23 @@ export function registerWebStdlib(env: Environment, callFn: FnCaller): void {
 
             // Parse body
             if (body) {
-              try {
-                const parsed = JSON.parse(body);
-                reqMap.set('body', jsonToKode(parsed));
-              } catch {
-                reqMap.set('body', mkStr(body));
+              const contentType = req.headers['content-type'] ?? '';
+              if (contentType.includes('application/x-www-form-urlencoded')) {
+                // Parse URL-encoded form data
+                const formData = new Map<string, KodeValue>();
+                for (const pair of body.split('&')) {
+                  const [key, ...rest] = pair.split('=');
+                  const value = decodeURIComponent(rest.join('=').replace(/\+/g, ' '));
+                  formData.set(decodeURIComponent(key), mkStr(value));
+                }
+                reqMap.set('body', mkMap(formData));
+              } else {
+                try {
+                  const parsed = JSON.parse(body);
+                  reqMap.set('body', jsonToKode(parsed));
+                } catch {
+                  reqMap.set('body', mkStr(body));
+                }
               }
             } else {
               reqMap.set('body', mkNull());
