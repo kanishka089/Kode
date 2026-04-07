@@ -141,6 +141,19 @@ web.route("GET", "/", |req| {
   rt page("Dashboard", "<h1>Dashboard</h1>" + stats + task_html)
 })
 
+-- NEW PROJECT FORM (must be before /projects/:id)
+web.route("GET", "/projects/new", |req| {
+  rt page("New Project", "<h1>New Project</h1><div class='card' style='max-width:500px'><form method='post' action='/projects/new'><label>Name</label><input name='name' required placeholder='Project name'><label>Description</label><textarea name='description' rows='3' placeholder='What is this project about?'></textarea><button class='btn btn-primary'>Create</button></form></div>")
+})
+
+web.route("POST", "/projects/new", |req| {
+  lt id = uuid.v4()
+  db.exec("insert into projects (id, name, description) values (?, ?, ?)", @[id req.body.name req.body.description])
+  mem.e.log(@{event|"project_created" name|req.body.name})
+  log.info("Project created: " + req.body.name)
+  rt web.redirect("/projects/" + id)
+})
+
 -- PROJECTS LIST
 web.route("GET", "/projects", |req| {
   lt projects = db.query("select p.*, (select count(*) from tasks where project_id = p.id) as task_count, (select count(*) from tasks where project_id = p.id and status = 'done') as done_count from projects p")
@@ -152,19 +165,6 @@ web.route("GET", "/projects", |req| {
   if cards == "" { cards = "<div class='empty'>No projects yet.</div>" }
 
   rt page("Projects", "<div style='display:flex;justify-content:space-between;align-items:center'><h1>Projects</h1><a href='/projects/new' class='btn btn-primary'>New Project</a></div><div class='grid'>" + cards + "</div>")
-})
-
--- NEW PROJECT FORM
-web.route("GET", "/projects/new", |req| {
-  rt page("New Project", "<h1>New Project</h1><div class='card' style='max-width:500px'><form method='post' action='/projects/new'><label>Name</label><input name='name' required placeholder='Project name'><label>Description</label><textarea name='description' rows='3' placeholder='What is this project about?'></textarea><button class='btn btn-primary'>Create</button></form></div>")
-})
-
-web.route("POST", "/projects/new", |req| {
-  lt id = uuid.v4()
-  db.exec("insert into projects (id, name, description) values (?, ?, ?)", @[id req.body.name req.body.description])
-  mem.e.log(@{event|"project_created" name|req.body.name})
-  log.info("Project created: " + req.body.name)
-  rt web.redirect("/projects/" + id)
 })
 
 -- PROJECT DETAIL (Kanban Board)
