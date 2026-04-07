@@ -35,22 +35,31 @@ export function registerWebStdlib(env: Environment, callFn: FnCaller): void {
         let matched: Route | undefined;
         let params: Record<string, string> = {};
 
+        // First pass: exact matches only
         for (const route of routes) {
           if (route.method !== method && route.method !== '*') continue;
           if (route.path === path) { matched = route; break; }
-          // Simple param matching: /users/:id
-          const routeParts = route.path.split('/');
-          const pathParts = path.split('/');
-          if (routeParts.length === pathParts.length) {
-            let match = true;
-            for (let i = 0; i < routeParts.length; i++) {
-              if (routeParts[i].startsWith(':')) {
-                params[routeParts[i].slice(1)] = pathParts[i];
-              } else if (routeParts[i] !== pathParts[i]) {
-                match = false; break;
+        }
+
+        // Second pass: parameterized matches (only if no exact match)
+        if (!matched) {
+          for (const route of routes) {
+            if (route.method !== method && route.method !== '*') continue;
+            if (!route.path.includes(':')) continue;
+            const routeParts = route.path.split('/');
+            const pathParts = path.split('/');
+            if (routeParts.length === pathParts.length) {
+              let match = true;
+              const p: Record<string, string> = {};
+              for (let i = 0; i < routeParts.length; i++) {
+                if (routeParts[i].startsWith(':')) {
+                  p[routeParts[i].slice(1)] = pathParts[i];
+                } else if (routeParts[i] !== pathParts[i]) {
+                  match = false; break;
+                }
               }
+              if (match) { matched = route; params = p; break; }
             }
-            if (match) { matched = route; break; }
           }
         }
 
