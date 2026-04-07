@@ -221,10 +221,12 @@ web.route("POST", "/projects/:id/tasks/new", |req| {
   lt id = uuid.v4()
   lt title = req.body.title
   lt priority = req.body.priority
+  vr description = ""
+  if mp.has(req.body, "description") { description = req.body.description }
 
   tx { validate_task(title, priority) } ct e { log.warn("Validation failed: " + e) }
 
-  db.exec("insert into tasks (id, project_id, title, description, priority) values (?, ?, ?, ?, ?)", @[id req.params.id title req.body.description priority])
+  db.exec("insert into tasks (id, project_id, title, description, priority) values (?, ?, ?, ?, ?)", @[id req.params.id title description priority])
 
   em analyzer @{type|"analyze" task_id|id title|title}
   mem.e.log(@{event|"task_created" title|title priority|priority})
@@ -277,9 +279,10 @@ web.route("GET", "/analytics", |req| {
   vr event_rows = ""
   fr e : events {
     vr detail = ""
-    if e.title != nl { detail = e.title }
-    ef e.task != nl { detail = e.task }
-    ef e.name != nl { detail = e.name }
+    if mp.has(e, "title") { detail = e.title }
+    ef mp.has(e, "task") { detail = e.task }
+    ef mp.has(e, "name") { detail = e.name }
+    ef mp.has(e, "suggested") { detail = e.suggested }
     event_rows = event_rows + "<tr><td>" + e.event + "</td><td style='color:#888'>" + detail + "</td></tr>"
   }
 
