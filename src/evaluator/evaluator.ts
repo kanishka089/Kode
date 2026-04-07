@@ -683,6 +683,7 @@ export class Evaluator {
       case 'ToonList': return this.evalToonList(expr, env);
       case 'Lambda': return this.evalLambda(expr, env);
       case 'StringInterp': return this.evalStringInterp(expr, env);
+      case 'IfStmt': return this.execIf(expr as any, env);
       case 'SpawnExpr': return this.spawnAgent((expr as AST.SpawnExpr).name, env);
       case 'AwaitExpr': return this.evalExpr((expr as AST.AwaitExpr).value, env); // sync for now
       case 'AssignExpr': return this.evalAssignExpr(expr, env);

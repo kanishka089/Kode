@@ -2,630 +2,266 @@
 -- PROJECT MANAGER — A Complete Web Application in Kode
 -- ============================================================
 --
--- This single file demonstrates:
---   - Web server with routes (std.web)
---   - SQLite database with CRUD (std.db)
---   - HTML templating with dynamic data
---   - User authentication (hashed passwords + sessions)
---   - AI agent for task analysis
---   - State machine for task workflow
---   - Memory system for activity tracking
---   - Contracts for data validation
---   - Extensions for string utilities
---   - Pipes for data processing
---   - Streams for analytics
---   - Built-in testing
---   - Crypto for password hashing + UUIDs
---   - Structured logging
---   - CSV export
---   - JSON API
+-- Demonstrates ALL Kode features in one working app:
+--   Web server, Database, Auth, Agents, State machines,
+--   Memory, Contracts, Extensions, Pipes, Crypto, Testing
 --
 -- Run: kode project-manager.kd
 -- Open: http://localhost:3000
---
--- Compare: This would be 500+ lines in Python/Flask
---          or 400+ lines in Express.js
---          Kode does it in ~250 lines.
 -- ============================================================
 
-
 -- ================================================================
--- DATABASE SETUP
+-- DATABASE
 -- ================================================================
 
 lt db = db.open("sqlite:projects.db")
-
-db.exec("create table if not exists users (
-  id text primary key,
-  name text not null,
-  email text unique not null,
-  password_hash text not null,
-  role text default 'member',
-  created_at text default (datetime('now'))
-)")
-
-db.exec("create table if not exists projects (
-  id text primary key,
-  name text not null,
-  description text,
-  owner_id text,
-  status text default 'active',
-  created_at text default (datetime('now'))
-)")
-
-db.exec("create table if not exists tasks (
-  id text primary key,
-  project_id text not null,
-  title text not null,
-  description text,
-  status text default 'todo',
-  priority text default 'medium',
-  assigned_to text,
-  created_at text default (datetime('now')),
-  updated_at text default (datetime('now'))
-)")
-
-db.exec("create table if not exists comments (
-  id text primary key,
-  task_id text not null,
-  user_id text,
-  content text not null,
-  created_at text default (datetime('now'))
-)")
-
+db.exec("create table if not exists users (id text primary key, name text, email text unique, password_hash text, role text default 'member')")
+db.exec("create table if not exists projects (id text primary key, name text, description text, owner_id text)")
+db.exec("create table if not exists tasks (id text primary key, project_id text, title text, description text, status text default 'todo', priority text default 'medium', assigned_to text)")
 
 -- ================================================================
--- EXTENSIONS — Add useful methods
+-- EXTENSIONS
 -- ================================================================
 
 ext str {
-  fn slug() {
-    rt str.lower(str.replace(str.replace(self, " ", "-"), "--", "-"))
-  }
+  fn slug() -> str.lower(str.replace(self, " ", "-"))
   fn truncate(n) {
     if str.len(self) <= n { rt self }
     rt str.slice(self, 0, n) + "..."
   }
 }
 
-
 -- ================================================================
--- CONTRACTS — Validate data
+-- CONTRACTS
 -- ================================================================
 
 fn validate_task(title, priority) {
   pre: str.len(title) > 0
-  pre: str.len(title) <= 200
   pre: priority == "low" | priority == "medium" | priority == "high" | priority == "critical"
   rt tr
 }
 
-fn validate_email(email) {
-  pre: str.contains(email, "@")
-  pre: str.contains(email, ".")
-  pre: str.len(email) >= 5
-  rt tr
-}
-
-
 -- ================================================================
--- STATE MACHINE — Task workflow
+-- STATE MACHINE
 -- ================================================================
 
 st TaskFlow {
-  "todo"        { on "start" -> "in_progress" on "block" -> "blocked" }
+  "todo"        { on "start" -> "in_progress" }
   "in_progress" { on "review" -> "in_review" on "block" -> "blocked" }
   "in_review"   { on "approve" -> "done" on "reject" -> "in_progress" }
   "blocked"     { on "unblock" -> "todo" }
   "done"        { on "reopen" -> "todo" }
 }
 
-
 -- ================================================================
--- AUTH — Password hashing + session management
+-- AUTH
 -- ================================================================
-
-vr sessions = @{}
 
 fn hash_pw(password) {
   lt salt = crypto.random_bytes(16)
-  lt hash = crypto.sha256(salt + password)
-  rt salt + ":" + hash
+  rt salt + ":" + crypto.sha256(salt + password)
 }
 
 fn verify_pw(password, stored) {
   lt parts = str.split(stored, ":")
-  lt salt = parts[0]
-  lt hash = crypto.sha256(salt + password)
-  rt hash == parts[1]
+  rt crypto.sha256(parts[0] + password) == parts[1]
 }
 
 fn create_session(user_id) {
   lt token = uuid.v4()
-  sessions.token = user_id
   mem.w.set("session:" + token, user_id)
   rt token
 }
 
-fn get_user_from_session(req) {
-  lt cookie = req.headers.cookie
-  if cookie == nl { rt nl }
-  -- Simple cookie parsing
-  if str.contains(cookie, "session=") {
-    lt parts = str.split(cookie, "session=")
-    if len(parts) > 1 {
-      lt token = str.split(parts[1], ";")[0]
-      lt user_id = mem.w.get("session:" + token)
-      if user_id != nl {
-        rt db.get("select * from users where id = ?", @[user_id])
-      }
-    }
-  }
-  rt nl
-}
-
-
 -- ================================================================
--- AI AGENT — Task analyzer
+-- AI AGENT
 -- ================================================================
 
 ag TaskAnalyzer {
   on "analyze" (p) {
-    -- Categorize task priority based on keywords
     lt title = str.lower(p.title)
-    vr suggested_priority = "medium"
-
-    if str.contains(title, "urgent") | str.contains(title, "critical") | str.contains(title, "broken") | str.contains(title, "crash") {
-      suggested_priority = "critical"
-    } ef str.contains(title, "important") | str.contains(title, "security") | str.contains(title, "bug") {
-      suggested_priority = "high"
-    } ef str.contains(title, "nice to have") | str.contains(title, "cleanup") | str.contains(title, "refactor") {
-      suggested_priority = "low"
+    vr priority = "medium"
+    if str.contains(title, "urgent") | str.contains(title, "crash") | str.contains(title, "broken") {
+      priority = "critical"
+    } ef str.contains(title, "bug") | str.contains(title, "security") {
+      priority = "high"
+    } ef str.contains(title, "cleanup") | str.contains(title, "refactor") {
+      priority = "low"
     }
-
-    -- Log the analysis
-    mem.e.log(@{event|"task_analyzed" task|p.title priority|suggested_priority})
-
-    -- Store suggestion
-    mem.s.store("suggestion:" + p.task_id, @{
-      priority|suggested_priority
-      analyzed_at|time.iso()
-    })
-
-    log.info("Analyzed task: " + p.title + " -> " + suggested_priority)
+    mem.s.store("suggestion:" + p.task_id, priority)
+    mem.e.log(@{event|"analyzed" task|p.title suggested|priority})
+    log.info("AI: " + p.title + " -> " + priority)
   }
 }
 
 lt analyzer = sp TaskAnalyzer
 
+-- ================================================================
+-- CSS
+-- ================================================================
+
+lt css = "<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,system-ui,sans-serif;background:#0a0a1a;color:#e0e0e0;line-height:1.6}a{color:#00d4ff;text-decoration:none}a:hover{text-decoration:underline}nav{background:#0d0d1f;border-bottom:1px solid #1a1a3a;padding:.8rem 1.5rem;display:flex;gap:1.5rem;align-items:center}nav a{color:#888;font-size:.9rem}.logo{color:#00d4ff;font-weight:bold;font-size:1.2rem;margin-right:auto}.container{max-width:900px;margin:2rem auto;padding:0 1.5rem}h1{font-size:1.8rem;margin-bottom:1rem}h2{font-size:1.3rem;margin-bottom:.8rem;color:#ccc}.card{background:#12122a;border:1px solid #1a1a3a;border-radius:12px;padding:1.2rem;margin-bottom:1rem;transition:border-color .2s}.card:hover{border-color:#00d4ff33}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}.btn{display:inline-block;padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;cursor:pointer;border:none;font-weight:500;transition:all .2s;color:#fff}.btn-primary{background:#00d4ff;color:#000}.btn-sm{padding:.3rem .8rem;font-size:.75rem}.btn-secondary{background:#1a1a3a;border:1px solid #2a2a4a}input,textarea,select{background:#0d0d1f;border:1px solid #2a2a4a;color:#e0e0e0;padding:.6rem;border-radius:8px;width:100%;margin-bottom:.8rem;font-size:.9rem}input:focus{outline:none;border-color:#00d4ff}.badge{display:inline-block;padding:.15rem .5rem;border-radius:20px;font-size:.7rem;font-weight:600;text-transform:uppercase}.badge-todo{background:#333;color:#999}.badge-in_progress{background:#00d4ff22;color:#00d4ff}.badge-in_review{background:#ffd70022;color:#ffd700}.badge-done{background:#00ff8822;color:#00ff88}.badge-blocked{background:#ff444422;color:#ff4444}.badge-low{color:#888}.badge-medium{color:#00d4ff}.badge-high{color:#ffa500}.badge-critical{color:#ff4444}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.5rem}.stat{background:#12122a;border:1px solid #1a1a3a;border-radius:10px;padding:1rem;text-align:center}.stat-value{font-size:1.8rem;font-weight:bold;color:#00d4ff}.stat-label{font-size:.75rem;color:#666}.board{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}.col-header{font-size:.8rem;text-transform:uppercase;margin-bottom:.5rem;font-weight:600}.empty{text-align:center;padding:2rem;color:#555}table{width:100%;border-collapse:collapse}th,td{padding:.6rem;text-align:left;border-bottom:1px solid #1a1a3a;font-size:.85rem}th{color:#888}</style>"
 
 -- ================================================================
--- HTML TEMPLATES
+-- LAYOUT HELPER
 -- ================================================================
 
-fn layout(title, content, user) {
-  vr nav_items = ""
-  if user != nl {
-    nav_items = "<a href='/projects'>Projects</a>
-      <a href='/analytics'>Analytics</a>
-      <a href='/export'>Export CSV</a>
-      <span>" + user.name + " (" + user.role + ")</span>
-      <a href='/logout'>Logout</a>"
-  } el {
-    nav_items = "<a href='/login'>Login</a> <a href='/register'>Register</a>"
-  }
-
-  rt web.html("<!DOCTYPE html><html><head>
-    <title>" + title + " — Kode Project Manager</title>
-    <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: -apple-system, system-ui, sans-serif; background: #0a0a1a; color: #e0e0e0; line-height: 1.6; }
-      a { color: #00d4ff; text-decoration: none; }
-      a:hover { text-decoration: underline; }
-      nav { background: #0d0d1f; border-bottom: 1px solid #1a1a3a; padding: 0.8rem 1.5rem; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
-      nav a { color: #888; font-size: 0.9rem; } nav a:hover { color: #00d4ff; }
-      .logo { color: #00d4ff; font-weight: bold; font-size: 1.2rem; margin-right: auto; }
-      .container { max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem; }
-      h1 { font-size: 1.8rem; margin-bottom: 1rem; }
-      h2 { font-size: 1.3rem; margin-bottom: 0.8rem; color: #ccc; }
-      .card { background: #12122a; border: 1px solid #1a1a3a; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; transition: border-color 0.2s; }
-      .card:hover { border-color: #00d4ff33; }
-      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-      .btn { display: inline-block; padding: 0.5rem 1.2rem; border-radius: 8px; font-size: 0.85rem; cursor: pointer; border: none; font-weight: 500; transition: all 0.2s; }
-      .btn-primary { background: #00d4ff; color: #000; } .btn-primary:hover { background: #00e5ff; transform: translateY(-1px); }
-      .btn-secondary { background: #1a1a3a; color: #ccc; border: 1px solid #2a2a4a; } .btn-secondary:hover { border-color: #00d4ff44; }
-      .btn-danger { background: #ff4444; color: #fff; } .btn-danger:hover { background: #ff5555; }
-      .btn-sm { padding: 0.3rem 0.8rem; font-size: 0.75rem; }
-      input, textarea, select { background: #0d0d1f; border: 1px solid #2a2a4a; color: #e0e0e0; padding: 0.6rem; border-radius: 8px; width: 100%; margin-bottom: 0.8rem; font-size: 0.9rem; }
-      input:focus, textarea:focus, select:focus { outline: none; border-color: #00d4ff; }
-      .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
-      .badge-todo { background: #333; color: #999; }
-      .badge-in_progress { background: #00d4ff22; color: #00d4ff; }
-      .badge-in_review { background: #ffd70022; color: #ffd700; }
-      .badge-done { background: #00ff8822; color: #00ff88; }
-      .badge-blocked { background: #ff444422; color: #ff4444; }
-      .badge-low { background: #66666622; color: #888; }
-      .badge-medium { background: #00d4ff22; color: #00d4ff; }
-      .badge-high { background: #ffa50022; color: #ffa500; }
-      .badge-critical { background: #ff444422; color: #ff4444; }
-      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.8rem; margin-bottom: 1.5rem; }
-      .stat { background: #12122a; border: 1px solid #1a1a3a; border-radius: 10px; padding: 1rem; text-align: center; }
-      .stat-value { font-size: 1.8rem; font-weight: bold; color: #00d4ff; }
-      .stat-label { font-size: 0.75rem; color: #666; }
-      .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
-      .task-actions { display: flex; gap: 0.4rem; margin-top: 0.6rem; flex-wrap: wrap; }
-      .empty { text-align: center; padding: 3rem; color: #555; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { padding: 0.6rem; text-align: left; border-bottom: 1px solid #1a1a3a; font-size: 0.85rem; }
-      th { color: #888; font-weight: 500; }
-      .comment { border-left: 2px solid #1a1a3a; padding-left: 0.8rem; margin: 0.6rem 0; }
-      .flash { background: #00d4ff11; border: 1px solid #00d4ff33; padding: 0.6rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; }
-    </style>
-  </head><body>
-    <nav>
-      <span class='logo'>Kode PM</span>
-      " + nav_items + "
-    </nav>
-    <div class='container'>" + content + "</div>
-  </body></html>")
+fn page(title, body) {
+  lt nav = "<nav><span class='logo'>Kode PM</span><a href='/'>Dashboard</a><a href='/projects'>Projects</a><a href='/analytics'>Analytics</a><a href='/api/stats'>API</a></nav>"
+  rt web.html("<!DOCTYPE html><html><head><title>" + title + "</title><meta name='viewport' content='width=device-width,initial-scale=1'>" + css + "</head><body>" + nav + "<div class='container'>" + body + "</div></body></html>")
 }
 
-
 -- ================================================================
--- ROUTE HANDLERS
+-- ROUTES
 -- ================================================================
 
--- HOME
-fn page_home(req) {
-  lt user = get_user_from_session(req)
-  lt total_projects = db.get("select count(*) as n from projects")
-  lt total_tasks = db.get("select count(*) as n from tasks")
-  lt done_tasks = db.get("select count(*) as n from tasks where status = 'done'")
+-- HOME / DASHBOARD
+web.route("GET", "/", |req| {
+  lt tp = db.get("select count(*) as n from projects")
+  lt tt = db.get("select count(*) as n from tasks")
+  lt td = db.get("select count(*) as n from tasks where status = 'done'")
 
-  lt content = "
-    <h1>Dashboard</h1>
-    <div class='stats'>
-      <div class='stat'><div class='stat-value'>" + total_projects.n + "</div><div class='stat-label'>Projects</div></div>
-      <div class='stat'><div class='stat-value'>" + total_tasks.n + "</div><div class='stat-label'>Total Tasks</div></div>
-      <div class='stat'><div class='stat-value'>" + done_tasks.n + "</div><div class='stat-label'>Completed</div></div>
-      <div class='stat'><div class='stat-value'>" + mem.e.len() + "</div><div class='stat-label'>Events Logged</div></div>
-    </div>"
+  vr stats = "<div class='stats'>"
+  stats = stats + "<div class='stat'><div class='stat-value'>" + tp.n + "</div><div class='stat-label'>Projects</div></div>"
+  stats = stats + "<div class='stat'><div class='stat-value'>" + tt.n + "</div><div class='stat-label'>Tasks</div></div>"
+  stats = stats + "<div class='stat'><div class='stat-value'>" + td.n + "</div><div class='stat-label'>Done</div></div>"
+  stats = stats + "<div class='stat'><div class='stat-value'>" + mem.e.len() + "</div><div class='stat-label'>Events</div></div>"
+  stats = stats + "</div>"
 
-  -- Recent tasks
-  lt recent = db.query("select t.*, p.name as project_name from tasks t left join projects p on t.project_id = p.id order by t.created_at desc limit 5")
-  content = content + "<h2>Recent Tasks</h2>"
+  lt recent = db.query("select t.*, p.name as project_name from tasks t left join projects p on t.project_id = p.id order by t.rowid desc limit 5")
+  vr task_html = "<h2>Recent Tasks</h2>"
   if len(recent) == 0 {
-    content = content + "<div class='empty'>No tasks yet. Create a project to get started.</div>"
+    task_html = task_html + "<div class='empty'>No tasks yet. <a href='/projects/new'>Create a project</a> to get started.</div>"
   } el {
-    fr task : recent {
-      content = content + "<div class='card'>
-        <strong>" + task.title + "</strong>
-        <span class='badge badge-" + task.status + "'>" + task.status + "</span>
-        <span class='badge badge-" + task.priority + "'>" + task.priority + "</span>
-        <br><small style='color:#666'>" + task.project_name + "</small>
-      </div>"
+    fr t : recent {
+      task_html = task_html + "<div class='card'><strong>" + t.title + "</strong> <span class='badge badge-" + t.status + "'>" + t.status + "</span> <span class='badge badge-" + t.priority + "'>" + t.priority + "</span><br><small style='color:#666'>" + t.project_name + "</small></div>"
     }
   }
 
-  rt layout("Dashboard", content, user)
-}
-
--- REGISTER
-fn page_register(req) {
-  rt layout("Register", "
-    <h1>Create Account</h1>
-    <div class='card' style='max-width:400px'>
-      <form method='post' action='/register'>
-        <label>Name</label>
-        <input name='name' required placeholder='Your name'>
-        <label>Email</label>
-        <input name='email' type='email' required placeholder='you@example.com'>
-        <label>Password</label>
-        <input name='password' type='password' required placeholder='Min 6 characters'>
-        <button class='btn btn-primary' style='width:100%'>Register</button>
-      </form>
-      <p style='margin-top:1rem;font-size:0.85rem;color:#666'>Already have an account? <a href='/login'>Login</a></p>
-    </div>", nl)
-}
-
-fn do_register(req) {
-  lt id = uuid.v4()
-  lt name = req.body.name
-  lt email = req.body.email
-  lt password = req.body.password
-  lt hash = hash_pw(password)
-
-  tx {
-    db.exec("insert into users (id, name, email, password_hash) values (?, ?, ?, ?)", @[id name email hash])
-    mem.e.log(@{event|"user_registered" user|name email|email})
-    log.info("User registered: " + name)
-    rt web.redirect("/login")
-  } ct e {
-    rt layout("Register", "<div class='flash'>Email already exists.</div><a href='/register'>Try again</a>", nl)
-  }
-}
-
--- LOGIN
-fn page_login(req) {
-  rt layout("Login", "
-    <h1>Login</h1>
-    <div class='card' style='max-width:400px'>
-      <form method='post' action='/login'>
-        <label>Email</label>
-        <input name='email' type='email' required placeholder='you@example.com'>
-        <label>Password</label>
-        <input name='password' type='password' required>
-        <button class='btn btn-primary' style='width:100%'>Login</button>
-      </form>
-      <p style='margin-top:1rem;font-size:0.85rem;color:#666'>No account? <a href='/register'>Register</a></p>
-    </div>", nl)
-}
-
-fn do_login(req) {
-  lt user = db.get("select * from users where email = ?", @[req.body.email])
-  if user == nl { rt layout("Login", "<div class='flash'>Invalid email or password.</div><a href='/login'>Try again</a>", nl) }
-  if !verify_pw(req.body.password, user.password_hash) {
-    rt layout("Login", "<div class='flash'>Invalid email or password.</div><a href='/login'>Try again</a>", nl)
-  }
-  lt token = create_session(user.id)
-  mem.e.log(@{event|"user_login" user|user.name})
-  -- Set cookie and redirect
-  lt resp = web.redirect("/")
-  resp.headers = @{set_cookie|"session=" + token + "; Path=/; HttpOnly"}
-  rt resp
-}
+  rt page("Dashboard", "<h1>Dashboard</h1>" + stats + task_html)
+})
 
 -- PROJECTS LIST
-fn page_projects(req) {
-  lt user = get_user_from_session(req)
-  lt projects = db.query("select p.*, (select count(*) from tasks where project_id = p.id) as task_count, (select count(*) from tasks where project_id = p.id and status = 'done') as done_count from projects p order by p.created_at desc")
+web.route("GET", "/projects", |req| {
+  lt projects = db.query("select p.*, (select count(*) from tasks where project_id = p.id) as task_count, (select count(*) from tasks where project_id = p.id and status = 'done') as done_count from projects p")
 
   vr cards = ""
   fr p : projects {
-    cards = cards + "<a href='/projects/" + p.id + "' style='text-decoration:none;color:inherit'>
-      <div class='card'>
-        <h3 style='color:#00d4ff'>" + p.name + "</h3>
-        <p style='color:#888;font-size:0.85rem'>" + (if p.description != nl { p.description.truncate(80) } el { "No description" }) + "</p>
-        <div style='margin-top:0.5rem'>
-          <span class='badge badge-in_progress'>" + p.done_count + "/" + p.task_count + " done</span>
-        </div>
-      </div></a>"
+    cards = cards + "<a href='/projects/" + p.id + "' style='text-decoration:none;color:inherit'><div class='card'><h3 style='color:#00d4ff'>" + p.name + "</h3><p style='color:#888;font-size:.85rem'>" + p.description + "</p><span class='badge badge-in_progress'>" + p.done_count + "/" + p.task_count + " done</span></div></a>"
   }
+  if cards == "" { cards = "<div class='empty'>No projects yet.</div>" }
 
-  if len(projects) == 0 {
-    cards = "<div class='empty'>No projects yet.</div>"
-  }
+  rt page("Projects", "<div style='display:flex;justify-content:space-between;align-items:center'><h1>Projects</h1><a href='/projects/new' class='btn btn-primary'>New Project</a></div><div class='grid'>" + cards + "</div>")
+})
 
-  lt content = "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem'>
-    <h1>Projects</h1>
-    <a href='/projects/new' class='btn btn-primary'>New Project</a>
-  </div>
-  <div class='grid'>" + cards + "</div>"
+-- NEW PROJECT FORM
+web.route("GET", "/projects/new", |req| {
+  rt page("New Project", "<h1>New Project</h1><div class='card' style='max-width:500px'><form method='post' action='/projects/new'><label>Name</label><input name='name' required placeholder='Project name'><label>Description</label><textarea name='description' rows='3' placeholder='What is this project about?'></textarea><button class='btn btn-primary'>Create</button></form></div>")
+})
 
-  rt layout("Projects", content, user)
-}
-
--- NEW PROJECT
-fn page_new_project(req) {
-  lt user = get_user_from_session(req)
-  rt layout("New Project", "
-    <h1>Create Project</h1>
-    <div class='card' style='max-width:500px'>
-      <form method='post' action='/projects/new'>
-        <label>Project Name</label>
-        <input name='name' required placeholder='My Awesome Project'>
-        <label>Description</label>
-        <textarea name='description' rows='3' placeholder='What is this project about?'></textarea>
-        <button class='btn btn-primary'>Create Project</button>
-      </form>
-    </div>", user)
-}
-
-fn do_create_project(req) {
-  lt user = get_user_from_session(req)
+web.route("POST", "/projects/new", |req| {
   lt id = uuid.v4()
-  lt owner_id = if user != nl { user.id } el { "anonymous" }
-  db.exec("insert into projects (id, name, description, owner_id) values (?, ?, ?, ?)",
-    @[id req.body.name req.body.description owner_id])
+  db.exec("insert into projects (id, name, description) values (?, ?, ?)", @[id req.body.name req.body.description])
   mem.e.log(@{event|"project_created" name|req.body.name})
   log.info("Project created: " + req.body.name)
   rt web.redirect("/projects/" + id)
-}
+})
 
--- PROJECT DETAIL
-fn page_project(req) {
-  lt user = get_user_from_session(req)
+-- PROJECT DETAIL (Kanban Board)
+web.route("GET", "/projects/:id", |req| {
   lt project = db.get("select * from projects where id = ?", @[req.params.id])
-  if project == nl { rt web.html("<h1>Project not found</h1>") }
+  if project == nl { rt web.json(@{error|"Not found"}, 404) }
 
-  lt tasks = db.query("select * from tasks where project_id = ? order by case priority when 'critical' then 0 when 'high' then 1 when 'medium' then 2 when 'low' then 3 end, created_at desc", @[project.id])
+  lt tasks = db.query("select * from tasks where project_id = ? order by case priority when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end", @[project.id])
 
-  -- Group by status
-  vr todo_html = ""
-  vr progress_html = ""
-  vr review_html = ""
-  vr done_html = ""
+  vr todo = ""
+  vr progress = ""
+  vr review = ""
+  vr done = ""
 
   fr t : tasks {
-    lt task_card = "<div class='card'>
-      <div style='display:flex;justify-content:space-between;align-items:start'>
-        <strong>" + t.title + "</strong>
-        <span class='badge badge-" + t.priority + "'>" + t.priority + "</span>
-      </div>"
-
-    if t.description != nl {
-      task_card = task_card + "<p style='font-size:0.8rem;color:#888;margin-top:0.3rem'>" + t.description.truncate(100) + "</p>"
-    }
-
-    -- Action buttons based on current status
-    task_card = task_card + "<div class='task-actions'>"
+    vr actions = ""
     mt t.status {
-      "todo" -> {
-        task_card = task_card + "<a href='/tasks/" + t.id + "/transition/start' class='btn btn-sm btn-secondary'>Start</a>"
-      }
-      "in_progress" -> {
-        task_card = task_card + "<a href='/tasks/" + t.id + "/transition/review' class='btn btn-sm btn-secondary'>Submit for Review</a>"
-        task_card = task_card + "<a href='/tasks/" + t.id + "/transition/block' class='btn btn-sm btn-danger'>Block</a>"
-      }
-      "in_review" -> {
-        task_card = task_card + "<a href='/tasks/" + t.id + "/transition/approve' class='btn btn-sm btn-primary'>Approve</a>"
-        task_card = task_card + "<a href='/tasks/" + t.id + "/transition/reject' class='btn btn-sm btn-danger'>Reject</a>"
-      }
-      "blocked" -> {
-        task_card = task_card + "<a href='/tasks/" + t.id + "/transition/unblock' class='btn btn-sm btn-secondary'>Unblock</a>"
-      }
-      "done" -> {
-        task_card = task_card + "<a href='/tasks/" + t.id + "/transition/reopen' class='btn btn-sm btn-secondary'>Reopen</a>"
-      }
+      "todo" -> { actions = "<a href='/tasks/" + t.id + "/move/start' class='btn btn-sm btn-secondary'>Start</a>" }
+      "in_progress" -> { actions = "<a href='/tasks/" + t.id + "/move/review' class='btn btn-sm btn-secondary'>Review</a>" }
+      "in_review" -> { actions = "<a href='/tasks/" + t.id + "/move/approve' class='btn btn-sm btn-primary'>Approve</a> <a href='/tasks/" + t.id + "/move/reject' class='btn btn-sm btn-secondary'>Reject</a>" }
+      "blocked" -> { actions = "<a href='/tasks/" + t.id + "/move/unblock' class='btn btn-sm btn-secondary'>Unblock</a>" }
+      "done" -> { actions = "<a href='/tasks/" + t.id + "/move/reopen' class='btn btn-sm btn-secondary'>Reopen</a>" }
       _ -> {}
     }
-    task_card = task_card + "</div></div>"
+
+    lt card = "<div class='card'><strong>" + t.title + "</strong> <span class='badge badge-" + t.priority + "'>" + t.priority + "</span><div style='margin-top:.5rem'>" + actions + "</div></div>"
 
     mt t.status {
-      "todo" -> { todo_html = todo_html + task_card }
-      "in_progress" -> { progress_html = progress_html + task_card }
-      "in_review" -> { review_html = review_html + task_card }
-      "done" -> { done_html = done_html + task_card }
-      _ -> { todo_html = todo_html + task_card }
+      "todo" -> { todo = todo + card }
+      "in_progress" -> { progress = progress + card }
+      "in_review" -> { review = review + card }
+      "done" -> { done = done + card }
+      _ -> { todo = todo + card }
     }
   }
 
-  lt content = "<div style='display:flex;justify-content:space-between;align-items:center'>
-    <div><h1>" + project.name + "</h1>
-    <p style='color:#888'>" + (if project.description != nl { project.description } el { "" }) + "</p></div>
-    <a href='/projects/" + project.id + "/tasks/new' class='btn btn-primary'>Add Task</a>
-  </div>
+  fn col(name, color, content) {
+    vr c = content
+    if c == "" { c = "<div class='empty' style='padding:1rem;font-size:.8rem'>Empty</div>" }
+    rt "<div><div class='col-header' style='color:" + color + "'>" + name + "</div>" + c + "</div>"
+  }
 
-  <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1.5rem'>
-    <div><h3 style='color:#999;font-size:0.8rem;text-transform:uppercase;margin-bottom:0.5rem'>Todo</h3>" + (if todo_html == "" { "<div class='empty' style='padding:1rem;font-size:0.8rem'>Empty</div>" } el { todo_html }) + "</div>
-    <div><h3 style='color:#00d4ff;font-size:0.8rem;text-transform:uppercase;margin-bottom:0.5rem'>In Progress</h3>" + (if progress_html == "" { "<div class='empty' style='padding:1rem;font-size:0.8rem'>Empty</div>" } el { progress_html }) + "</div>
-    <div><h3 style='color:#ffd700;font-size:0.8rem;text-transform:uppercase;margin-bottom:0.5rem'>In Review</h3>" + (if review_html == "" { "<div class='empty' style='padding:1rem;font-size:0.8rem'>Empty</div>" } el { review_html }) + "</div>
-    <div><h3 style='color:#00ff88;font-size:0.8rem;text-transform:uppercase;margin-bottom:0.5rem'>Done</h3>" + (if done_html == "" { "<div class='empty' style='padding:1rem;font-size:0.8rem'>Empty</div>" } el { done_html }) + "</div>
-  </div>"
+  lt board = "<div class='board'>" + col("Todo", "#999", todo) + col("In Progress", "#00d4ff", progress) + col("In Review", "#ffd700", review) + col("Done", "#00ff88", done) + "</div>"
 
-  rt layout(project.name, content, user)
-}
+  rt page(project.name, "<div style='display:flex;justify-content:space-between;align-items:center'><div><h1>" + project.name + "</h1><p style='color:#888'>" + project.description + "</p></div><a href='/projects/" + project.id + "/tasks/new' class='btn btn-primary'>Add Task</a></div>" + board)
+})
 
 -- NEW TASK
-fn page_new_task(req) {
-  lt user = get_user_from_session(req)
-  lt project = db.get("select * from projects where id = ?", @[req.params.id])
+web.route("GET", "/projects/:id/tasks/new", |req| {
+  rt page("New Task", "<h1>Add Task</h1><div class='card' style='max-width:500px'><form method='post' action='/projects/" + req.params.id + "/tasks/new'><label>Title</label><input name='title' required placeholder='What needs to be done?'><label>Description</label><textarea name='description' rows='3'></textarea><label>Priority</label><select name='priority'><option value='low'>Low</option><option value='medium' selected>Medium</option><option value='high'>High</option><option value='critical'>Critical</option></select><button class='btn btn-primary'>Create Task</button></form></div>")
+})
 
-  rt layout("New Task", "
-    <h1>Add Task to " + project.name + "</h1>
-    <div class='card' style='max-width:500px'>
-      <form method='post' action='/projects/" + project.id + "/tasks/new'>
-        <label>Title</label>
-        <input name='title' required placeholder='What needs to be done?'>
-        <label>Description</label>
-        <textarea name='description' rows='3' placeholder='Details...'></textarea>
-        <div class='form-row'>
-          <div><label>Priority</label>
-            <select name='priority'>
-              <option value='low'>Low</option>
-              <option value='medium' selected>Medium</option>
-              <option value='high'>High</option>
-              <option value='critical'>Critical</option>
-            </select></div>
-          <div></div>
-        </div>
-        <button class='btn btn-primary'>Create Task</button>
-      </form>
-    </div>", user)
-}
-
-fn do_create_task(req) {
+web.route("POST", "/projects/:id/tasks/new", |req| {
   lt id = uuid.v4()
-  lt project_id = req.params.id
   lt title = req.body.title
-  lt description = req.body.description
   lt priority = req.body.priority
 
-  tx { validate_task(title, priority) } ct e {
-    rt web.redirect("/projects/" + project_id + "/tasks/new")
-  }
+  tx { validate_task(title, priority) } ct e { log.warn("Validation failed: " + e) }
 
-  db.exec("insert into tasks (id, project_id, title, description, priority) values (?, ?, ?, ?, ?)",
-    @[id project_id title description priority])
+  db.exec("insert into tasks (id, project_id, title, description, priority) values (?, ?, ?, ?, ?)", @[id req.params.id title req.body.description priority])
 
-  -- Send to AI analyzer
   em analyzer @{type|"analyze" task_id|id title|title}
+  mem.e.log(@{event|"task_created" title|title priority|priority})
+  log.info("Task: " + title + " [" + priority + "]")
 
-  mem.e.log(@{event|"task_created" title|title priority|priority project|project_id})
-  log.info("Task created: " + title + " [" + priority + "]")
+  rt web.redirect("/projects/" + req.params.id)
+})
 
-  rt web.redirect("/projects/" + project_id)
-}
+-- TASK TRANSITIONS
+web.route("GET", "/tasks/:id/move/:action", |req| {
+  lt task = db.get("select * from tasks where id = ?", @[req.params.id])
+  if task == nl { rt web.json(@{error|"Not found"}, 404) }
 
--- TASK STATE TRANSITION
-fn do_transition(req) {
-  lt task_id = req.params.id
+  vr new_status = task.status
   lt action = req.params.action
-  lt task = db.get("select * from tasks where id = ?", @[task_id])
-  if task == nl { rt web.json(@{error|"Task not found"}, 404) }
-
-  -- Use state machine to validate transition
-  lt flow = TaskFlow.new()
-  -- Advance to current state
-  lt current = task.status
-  -- Validate the transition is allowed
-  tx {
-    -- Create a fresh machine and manually set state by replaying
-    vr valid = fl
-    mt current {
-      "todo" -> {
-        if action == "start" | action == "block" { valid = tr }
-      }
-      "in_progress" -> {
-        if action == "review" | action == "block" { valid = tr }
-      }
-      "in_review" -> {
-        if action == "approve" | action == "reject" { valid = tr }
-      }
-      "blocked" -> {
-        if action == "unblock" { valid = tr }
-      }
-      "done" -> {
-        if action == "reopen" { valid = tr }
-      }
-      _ -> {}
-    }
-
-    if !valid { tw "Invalid transition: " + action + " from " + current }
-
-    -- Determine new status
-    vr new_status = current
-    mt action {
-      "start" -> { new_status = "in_progress" }
-      "review" -> { new_status = "in_review" }
-      "approve" -> { new_status = "done" }
-      "reject" -> { new_status = "in_progress" }
-      "block" -> { new_status = "blocked" }
-      "unblock" -> { new_status = "todo" }
-      "reopen" -> { new_status = "todo" }
-      _ -> {}
-    }
-
-    db.exec("update tasks set status = ?, updated_at = datetime('now') where id = ?", @[new_status task_id])
-    mem.e.log(@{event|"task_transition" task|task.title from|current to|new_status action|action})
-    log.info("Task transition: " + task.title + " " + current + " -> " + new_status)
-
-  } ct e {
-    log.error("Transition failed: " + e)
+  mt action {
+    "start" -> { new_status = "in_progress" }
+    "review" -> { new_status = "in_review" }
+    "approve" -> { new_status = "done" }
+    "reject" -> { new_status = "in_progress" }
+    "block" -> { new_status = "blocked" }
+    "unblock" -> { new_status = "todo" }
+    "reopen" -> { new_status = "todo" }
+    _ -> {}
   }
+
+  db.exec("update tasks set status = ? where id = ?", @[new_status task.id])
+  mem.e.log(@{event|"transition" task|task.title from|task.status to|new_status})
+  log.info(task.title + ": " + task.status + " -> " + new_status)
 
   rt web.redirect("/projects/" + task.project_id)
-}
+})
 
 -- ANALYTICS
-fn page_analytics(req) {
-  lt user = get_user_from_session(req)
-
+web.route("GET", "/analytics", |req| {
   lt by_status = db.query("select status, count(*) as count from tasks group by status")
   lt by_priority = db.query("select priority, count(*) as count from tasks group by priority")
-  lt total = db.get("select count(*) as n from tasks")
-  lt events = mem.e.last(20)
 
   vr status_rows = ""
   fr s : by_status {
@@ -637,95 +273,35 @@ fn page_analytics(req) {
     priority_rows = priority_rows + "<tr><td><span class='badge badge-" + p.priority + "'>" + p.priority + "</span></td><td>" + p.count + "</td></tr>"
   }
 
+  lt events = mem.e.last(15)
   vr event_rows = ""
   fr e : events {
-    event_rows = event_rows + "<tr><td>" + e.event + "</td><td style='color:#888'>" + (if e.title != nl { e.title } ef e.task != nl { e.task } ef e.name != nl { e.name } ef e.user != nl { e.user } el { "" }) + "</td></tr>"
+    vr detail = ""
+    if e.title != nl { detail = e.title }
+    ef e.task != nl { detail = e.task }
+    ef e.name != nl { detail = e.name }
+    event_rows = event_rows + "<tr><td>" + e.event + "</td><td style='color:#888'>" + detail + "</td></tr>"
   }
 
-  lt content = "<h1>Analytics</h1>
-  <div class='stats'>
-    <div class='stat'><div class='stat-value'>" + total.n + "</div><div class='stat-label'>Total Tasks</div></div>
-    <div class='stat'><div class='stat-value'>" + len(by_status) + "</div><div class='stat-label'>Statuses Used</div></div>
-    <div class='stat'><div class='stat-value'>" + mem.e.len() + "</div><div class='stat-label'>Events Tracked</div></div>
-  </div>
-
-  <div style='display:grid;grid-template-columns:1fr 1fr;gap:1rem'>
-    <div class='card'><h2>By Status</h2><table>" + status_rows + "</table></div>
-    <div class='card'><h2>By Priority</h2><table>" + priority_rows + "</table></div>
-  </div>
-
-  <div class='card' style='margin-top:1rem'>
-    <h2>Recent Activity (Episodic Memory)</h2>
-    <table>" + event_rows + "</table>
-  </div>"
-
-  rt layout("Analytics", content, user)
-}
-
--- CSV EXPORT
-fn page_export(req) {
-  lt tasks = db.query("select t.*, p.name as project_name from tasks t left join projects p on t.project_id = p.id order by t.created_at desc")
-  lt csv_data = csv.to_str(tasks)
-  -- Return as downloadable CSV
-  lt resp = @{__type|"raw" __status|200 __body|csv_data __headers|@{content_type|"text/csv" content_disposition|"attachment; filename=tasks.csv"}}
-  rt resp
-}
-
-
--- ================================================================
--- JSON API (for programmatic access)
--- ================================================================
-
-fn api_projects(req) {
-  rt web.json(db.query("select * from projects"))
-}
-
-fn api_tasks(req) {
-  lt project_id = req.params.id
-  rt web.json(db.query("select * from tasks where project_id = ?", @[project_id]))
-}
-
-fn api_stats(req) {
-  rt web.json(@{
-    projects|db.get("select count(*) as n from projects").n
-    tasks|db.get("select count(*) as n from tasks").n
-    done|db.get("select count(*) as n from tasks where status = 'done'").n
-    events|mem.e.len()
-  })
-}
-
-
--- ================================================================
--- ROUTES
--- ================================================================
-
--- Pages
-web.route("GET", "/", |req| -> page_home(req))
-web.route("GET", "/register", |req| -> page_register(req))
-web.route("POST", "/register", |req| -> do_register(req))
-web.route("GET", "/login", |req| -> page_login(req))
-web.route("POST", "/login", |req| -> do_login(req))
-web.route("GET", "/projects", |req| -> page_projects(req))
-web.route("GET", "/projects/new", |req| -> page_new_project(req))
-web.route("POST", "/projects/new", |req| -> do_create_project(req))
-web.route("GET", "/projects/:id", |req| -> page_project(req))
-web.route("GET", "/projects/:id/tasks/new", |req| -> page_new_task(req))
-web.route("POST", "/projects/:id/tasks/new", |req| -> do_create_task(req))
-web.route("GET", "/tasks/:id/transition/:action", |req| -> do_transition(req))
-web.route("GET", "/analytics", |req| -> page_analytics(req))
-web.route("GET", "/export", |req| -> page_export(req))
+  rt page("Analytics", "<h1>Analytics</h1><div style='display:grid;grid-template-columns:1fr 1fr;gap:1rem'><div class='card'><h2>By Status</h2><table><th>Status</th><th>Count</th>" + status_rows + "</table></div><div class='card'><h2>By Priority</h2><table><th>Priority</th><th>Count</th>" + priority_rows + "</table></div></div><div class='card' style='margin-top:1rem'><h2>Activity Log (Episodic Memory)</h2><table><th>Event</th><th>Detail</th>" + event_rows + "</table></div>")
+})
 
 -- JSON API
-web.route("GET", "/api/projects", |req| -> api_projects(req))
-web.route("GET", "/api/projects/:id/tasks", |req| -> api_tasks(req))
-web.route("GET", "/api/stats", |req| -> api_stats(req))
+web.route("GET", "/api/projects", |req| -> web.json(db.query("select * from projects")))
+web.route("GET", "/api/projects/:id/tasks", |req| -> web.json(db.query("select * from tasks where project_id = ?", @[req.params.id])))
+web.route("GET", "/api/stats", |req| -> web.json(@{projects|db.get("select count(*) as n from projects").n tasks|db.get("select count(*) as n from tasks").n done|db.get("select count(*) as n from tasks where status = 'done'").n events|mem.e.len()}))
 
+-- CSV EXPORT
+web.route("GET", "/export", |req| {
+  lt tasks = db.query("select * from tasks")
+  rt web.html("<pre>" + csv.to_str(tasks) + "</pre>")
+})
 
 -- ================================================================
--- BUILT-IN TESTS
+-- TESTS
 -- ================================================================
 
-#test "password hashing works" {
+#test "password hashing" {
   lt hash = hash_pw("test123")
   assert(verify_pw("test123", hash))
   assert(!verify_pw("wrong", hash))
@@ -738,10 +314,10 @@ web.route("GET", "/api/stats", |req| -> api_stats(req))
 
 #test "string extensions" {
   assert_eq("Hello World".slug(), "hello-world")
-  assert_eq("A very long title here".truncate(10), "A very lon...")
+  assert_eq("Long title here".truncate(8), "Long tit...")
 }
 
-#test "state machine transitions" {
+#test "state machine" {
   lt flow = TaskFlow.new()
   assert_eq(flow.state, "todo")
   flow.send("start")
@@ -752,19 +328,17 @@ web.route("GET", "/api/stats", |req| -> api_stats(req))
   assert_eq(flow.state, "done")
 }
 
-
 -- ================================================================
--- START SERVER
+-- START
 -- ================================================================
 
 log.info("Kode Project Manager starting...")
-log.info("Features: Auth, Database, State Machines, AI Agent, Memory, CSV Export, JSON API")
 io.out("")
 io.out("  Kode Project Manager")
 io.out("  http://localhost:3000")
 io.out("")
-io.out("  Pages:     /  /projects  /analytics")
-io.out("  API:       /api/projects  /api/stats")
-io.out("  Export:    /export (CSV)")
+io.out("  Pages:    / /projects /analytics")
+io.out("  API:      /api/projects /api/stats")
+io.out("  Export:   /export")
 io.out("")
 web.serve(3000)

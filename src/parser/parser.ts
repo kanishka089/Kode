@@ -700,6 +700,12 @@ export class Parser {
       return { type: 'StringLit', value: this.previous().literal as string, line: tok.line, col: tok.col };
     }
 
+    // If as expression: if cond { expr } el { expr }
+    if (this.check(TokenType.If)) {
+      const ifStmt = this.ifStmt();
+      return ifStmt as any; // IfStmt works as expression too
+    }
+
     // Booleans
     if (this.match(TokenType.True)) return { type: 'BoolLit', value: true, line: tok.line, col: tok.col };
     if (this.match(TokenType.False)) return { type: 'BoolLit', value: false, line: tok.line, col: tok.col };
